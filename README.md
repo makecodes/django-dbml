@@ -21,5 +21,5 @@ pip install django-dbml
 #### 3. Run the command to generate a DBML schema based on your Django models
 
 ```bash
-$ python manage.py dbml all
+$ python manage.py dbml
 ```
