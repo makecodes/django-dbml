@@ -1,4 +1,4 @@
-# django-dbml
+# Django DBML generator
 
 This app can generate a DBML output for all installed models.
 
@@ -23,3 +23,7 @@ pip install django-dbml
 ```bash
 $ python manage.py dbml
 ```
+
+# Thanks
+
+The initial code was based on https://github.com/hamedsj/DbmlForDjango project
