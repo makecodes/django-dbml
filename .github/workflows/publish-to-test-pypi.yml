@@ -8,12 +8,7 @@ jobs:
     name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@master
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
-      - name: Publish a Python distribution to PyPI
+      - name: Publish
         uses: pypa/gh-action-pypi-publish@master
         with:
           user: __token__
