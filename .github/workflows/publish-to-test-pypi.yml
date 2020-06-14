@@ -1,0 +1,21 @@
+name: Publish 📦 to PyPI test server 🐍
+
+on: push
+
+
+jobs:
+  test-publish:
+    name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@master
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Publish a Python distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TEST_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/
