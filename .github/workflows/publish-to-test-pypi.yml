@@ -25,6 +25,7 @@ jobs:
           pep517.build
           --source
           --binary
+          --source-dir django_dbml/
           --out-dir dist/
       - name: Publish a Python distribution to PyPI
         uses: pypa/gh-action-pypi-publish@master
