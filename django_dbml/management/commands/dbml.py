@@ -80,36 +80,37 @@ class Command(BaseCommand):
 
                 elif isinstance(field, models.fields.related.ManyToManyField):
                     table_name_m2m = field.m2m_db_table()
+                    # only define m2m table and relations on first encounter
                     if table_name_m2m not in tables.keys():
                         tables[table_name_m2m] = {"fields": {}, "relations": []}
 
-                    tables[table_name_m2m]["relations"].append(
-                        {
-                            "type": "one_to_many",
-                            "table_from": table_name_m2m,
-                            "table_from_field": field.m2m_column_name(),
-                            "table_to": field.model.__name__,
-                            "table_to_field": field.m2m_target_field_name(),
+                        tables[table_name_m2m]["relations"].append(
+                            {
+                                "type": "one_to_many",
+                                "table_from": table_name_m2m,
+                                "table_from_field": field.m2m_column_name(),
+                                "table_to": field.model.__name__,
+                                "table_to_field": field.m2m_target_field_name(),
+                            }
+                        )
+                        tables[table_name_m2m]["relations"].append(
+                            {
+                                "type": "one_to_many",
+                                "table_from": table_name_m2m,
+                                "table_from_field": field.m2m_reverse_name(),
+                                "table_to": field.related_model.__name__,
+                                "table_to_field": field.m2m_target_field_name(),
+                            }
+                        )
+                        tables[table_name_m2m]["fields"][field.m2m_reverse_name()] = {
+                            "pk": True,
+                            "type": "auto",
                         }
-                    )
-                    tables[table_name_m2m]["relations"].append(
-                        {
-                            "type": "one_to_many",
-                            "table_from": table_name_m2m,
-                            "table_from_field": field.m2m_reverse_name(),
-                            "table_to": field.related_model.__name__,
-                            "table_to_field": field.m2m_target_field_name(),
-                        }
-                    )
-                    tables[table_name_m2m]["fields"][field.m2m_reverse_name()] = {
-                        "pk": True,
-                        "type": "auto",
-                    }
 
-                    tables[table_name_m2m]["fields"][field.m2m_column_name()] = {
-                        "pk": True,
-                        "type": "auto",
-                    }
+                        tables[table_name_m2m]["fields"][field.m2m_column_name()] = {
+                            "pk": True,
+                            "type": "auto",
+                        }
 
                     continue
 
@@ -118,7 +119,8 @@ class Command(BaseCommand):
                 }
 
                 if "help_text" in field_attributes:
-                    tables[table_name]["fields"][field.name]["note"] = field.help_text
+                    help_text = field.help_text.replace('"', '\\"')
+                    tables[table_name]["fields"][field.name]["note"] = help_text
 
                 if "null" in field_attributes and field.null is True:
                     tables[table_name]["fields"][field.name]["null"] = True
@@ -129,6 +131,9 @@ class Command(BaseCommand):
                 if "unique" in field_attributes and field.unique is True:
                     tables[table_name]["fields"][field.name]["unique"] = True
 
+                if app_table.__doc__:
+                    tables[table_name]["note"] = app_table.__doc__
+
         for table_name, table in tables.items():
             print("Table {} {{".format(table_name))
             for field_name, field in table["fields"].items():
@@ -137,6 +142,8 @@ class Command(BaseCommand):
                         field_name, field["type"], self.get_field_notes(field)
                     )
                 )
+            if 'note' in table:
+                print("  Note: '''{}'''".format(table['note']))
             print("}")
 
             for relation in table["relations"]:
