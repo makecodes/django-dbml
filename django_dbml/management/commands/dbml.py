@@ -5,7 +5,12 @@ from django.db import models
 
 
 class Command(BaseCommand):
-    help = "The main DBML management file"
+    help = "Generate a DBML file based on Django models"
+
+    def add_arguments(self, parser):
+        # Positional arguments
+        parser.add_argument('apps', nargs='*',
+                            help='Generate DBML for models in the specified apps')
 
     def get_field_notes(self, field):
         if len(field.keys()) == 1:
@@ -44,7 +49,18 @@ class Command(BaseCommand):
         )
 
         tables = {}
-        app_tables = apps.get_models()
+
+        if kwargs['apps']:
+            app_tables = []
+            # if applications are specified, get models for those
+            # applications only
+            for app in kwargs['apps']:
+                subapp = apps.get_app_config(app)
+                app_tables.extend(subapp.get_models())
+        else:
+            # by default, get all models
+            app_tables = apps.get_models()
+
         for app_table in app_tables:
             table_name = app_table.__name__
             tables[table_name] = {"fields": {}, "relations": []}
