@@ -24,6 +24,10 @@ pip install django-dbml
 $ python manage.py dbml
 ```
 
+To generate DBML for a subset of your models, specify one or more Django app 
+names or models by app_label or app_label.ModelName. Related tables will still 
+be included in the DBML.
+
 # Thanks
 
 The initial code was based on https://github.com/hamedsj/DbmlForDjango project
