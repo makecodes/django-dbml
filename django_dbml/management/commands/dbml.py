@@ -1,11 +1,17 @@
 from django_dbml.utils import to_snake_case
 from django.apps import apps
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import models
 
 
 class Command(BaseCommand):
-    help = "The main DBML management file"
+    help = "Generate a DBML file based on Django models"
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            'args', metavar='app_label[.ModelName]', nargs='*',
+            help='Restricts dbml generation to the specified app_label or app_label.ModelName.',
+        )
 
     def get_field_notes(self, field):
         if len(field.keys()) == 1:
@@ -29,7 +35,35 @@ class Command(BaseCommand):
             return ""
         return "[{}]".format(", ".join(attributes))
 
-    def handle(self, *args, **kwargs):
+    def get_app_tables(self, app_labels):
+        # get the list of models to generate DBML for
+
+        # if no apps are specified, process all models
+        if not app_labels:
+            return apps.get_models()
+
+        # get specific models when app or app.model is specified
+        app_tables = []
+        for app in app_labels:
+            app_label_parts = app.split('.')
+            # first part is always the app label
+            app_label = app_label_parts[0]
+            # use the second part as model label if set
+            model_label = app_label_parts[1] if len(app_label_parts) > 1 else None
+            try:
+                app_config = apps.get_app_config(app_label)
+            except LookupError as e:
+                raise CommandError(str(e))
+
+            app_config = apps.get_app_config(app_label)
+            if model_label:
+                app_tables.append(app_config.get_model(model_label))
+            else:
+                app_tables.extend(app_config.get_models())
+
+        return app_tables
+
+    def handle(self, *app_labels, **kwargs):
         all_fields = {}
         allowed_types = ["ForeignKey", "ManyToManyField"]
         for field_type in models.__all__:
@@ -44,7 +78,8 @@ class Command(BaseCommand):
         )
 
         tables = {}
-        app_tables = apps.get_models()
+        app_tables = self.get_app_tables(app_labels)
+
         for app_table in app_tables:
             table_name = app_table.__name__
             tables[table_name] = {"fields": {}, "relations": []}
