@@ -134,7 +134,7 @@ class Command(BaseCommand):
                                 "table_from": table_name_m2m,
                                 "table_from_field": field.m2m_reverse_name(),
                                 "table_to": field.related_model.__name__,
-                                "table_to_field": field.m2m_target_field_name(),
+                                "table_to_field": field.m2m_reverse_target_field_name(),
                             }
                         )
                         tables[table_name_m2m]["fields"][field.m2m_reverse_name()] = {
