@@ -153,7 +153,7 @@ class Command(BaseCommand):
                     "type": all_fields.get(type(field).__name__),
                 }
 
-                if "help_text" in field_attributes:
+                if "help_text" in field_attributes and field.help_text:
                     help_text = field.help_text.replace('"', '\\"')
                     tables[table_name]["fields"][field.name]["note"] = help_text
 
