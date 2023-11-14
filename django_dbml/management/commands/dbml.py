@@ -1,3 +1,5 @@
+import inspect
+
 from django_dbml.utils import to_snake_case
 from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
@@ -28,6 +30,14 @@ class Command(BaseCommand):
 
             if name in ("null", "pk", "unique"):
                 attributes.append(name)
+                continue
+
+            if name == "default":
+                if callable(value):
+                    value = "{}.{}()".format(inspect.getmodule(value).__name__, value.__name__)
+                elif isinstance(value, str):
+                    value = "\"{}\"".format(value)
+                attributes.append('default:`{}`'.format(value))
                 continue
 
             attributes.append("{}:{}".format(name, value))
@@ -165,6 +175,9 @@ class Command(BaseCommand):
 
                 if "unique" in field_attributes and field.unique is True:
                     tables[table_name]["fields"][field.name]["unique"] = True
+
+                if "default" in field_attributes and field.default != models.fields.NOT_PROVIDED:
+                    tables[table_name]["fields"][field.name]["default"] = field.default
 
                 if app_table.__doc__:
                     tables[table_name]["note"] = app_table.__doc__
