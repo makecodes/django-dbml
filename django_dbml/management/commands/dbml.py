@@ -14,6 +14,10 @@ class Command(BaseCommand):
             'args', metavar='app_label[.ModelName]', nargs='*',
             help='Restricts dbml generation to the specified app_label or app_label.ModelName.',
         )
+        parser.add_argument(
+            "--table_names", action="store_true",
+            help='Use underlying table names rather than model names',
+        )
 
     def get_field_notes(self, field):
         if len(field.keys()) == 1:
@@ -45,6 +49,11 @@ class Command(BaseCommand):
             return ""
         return "[{}]".format(", ".join(attributes))
 
+    def get_table_name(self, model):
+        if self.options["table_names"]:
+            return model._meta.db_table
+        return model.__name__
+
     def get_app_tables(self, app_labels):
         # get the list of models to generate DBML for
 
@@ -74,6 +83,7 @@ class Command(BaseCommand):
         return app_tables
 
     def handle(self, *app_labels, **kwargs):
+        self.options = kwargs
         all_fields = {}
         allowed_types = ["ForeignKey", "ManyToManyField"]
         for field_type in models.__all__:
@@ -91,7 +101,7 @@ class Command(BaseCommand):
         app_tables = self.get_app_tables(app_labels)
 
         for app_table in app_tables:
-            table_name = app_table.__name__
+            table_name = self.get_table_name(app_table)
             tables[table_name] = {"fields": {}, "relations": []}
 
             for field in app_table._meta.get_fields():
@@ -105,7 +115,7 @@ class Command(BaseCommand):
                     tables[table_name]["relations"].append(
                         {
                             "type": "one_to_one",
-                            "table_from": field.related_model.__name__,
+                            "table_from": self.get_table_name(field.related_model),
                             "table_from_field": field.target_field.name,
                             "table_to": table_name,
                             "table_to_field": field.name,
@@ -116,7 +126,7 @@ class Command(BaseCommand):
                     tables[table_name]["relations"].append(
                         {
                             "type": "one_to_many",
-                            "table_from": field.related_model.__name__,
+                            "table_from": self.get_table_name(field.related_model),
                             "table_from_field": field.target_field.name,
                             "table_to": table_name,
                             "table_to_field": field.name,
@@ -134,7 +144,7 @@ class Command(BaseCommand):
                                 "type": "one_to_many",
                                 "table_from": table_name_m2m,
                                 "table_from_field": field.m2m_column_name(),
-                                "table_to": field.model.__name__,
+                                "table_to": self.get_table_name(field.model),
                                 "table_to_field": field.m2m_target_field_name(),
                             }
                         )
@@ -143,7 +153,7 @@ class Command(BaseCommand):
                                 "type": "one_to_many",
                                 "table_from": table_name_m2m,
                                 "table_from_field": field.m2m_reverse_name(),
-                                "table_to": field.related_model.__name__,
+                                "table_to": self.get_table_name(field.related_model),
                                 "table_to_field": field.m2m_reverse_target_field_name(),
                             }
                         )
