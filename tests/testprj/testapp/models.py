@@ -1,17 +1,31 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
-class Category(models.Model):
-    name = models.CharField(max_length=255)
+class Follow(models.Model):
+    """The user follow model."""
 
-    def __str__(self):
-        return self.name
+    following_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="following"
+    )
+    followed_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="followed"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Post(models.Model):
-    title = models.CharField(max_length=255)
-    content = models.TextField()
-    category = models.ForeignKey("testapp.Category", on_delete=models.CASCADE)
+    """The post model."""
 
-    def __str__(self):
-        return self.title
+    title = models.CharField(max_length=255)
+    body = models.TextField(help_text="Content of the post")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=10,
+        choices=(
+            ("draft", "Draft"),
+            ("published", "Published"),
+        ),
+        default="draft",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)

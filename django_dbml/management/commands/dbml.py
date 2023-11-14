@@ -61,7 +61,6 @@ class Command(BaseCommand):
 
     def get_app_tables(self, app_labels):
         # get the list of models to generate DBML for
-
         # if no apps are specified, process all models
         if not app_labels:
             return apps.get_models()
@@ -211,7 +210,7 @@ class Command(BaseCommand):
                 )
             if "note" in table:
                 print("  Note: '''{}'''".format(table["note"]))
-            print("}")
+            print("}\n")
 
             for relation in table["relations"]:
                 if relation["type"] == "one_to_many":
@@ -233,4 +232,3 @@ class Command(BaseCommand):
                             relation["table_from_field"],
                         )
                     )
-            print("\n")

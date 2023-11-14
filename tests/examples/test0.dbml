@@ -1,17 +1,23 @@
-Table Category {
+Table Follow {
   id auto [pk, unique]
-  name char 
-  Note: '''Category(id, name)'''
+Table Follow {
+  id auto [pk, unique]
+  following_user foreign_key 
+  followed_user foreign_key 
+  created_at date_time 
+  Note: '''The user follow model.'''
 }
 
-
+ref: Follow.following_user > User.id
+ref: Follow.followed_user > User.id
 Table Post {
   id auto [pk, unique]
   title char 
-  content text 
-  category foreign_key 
-  Note: '''Post(id, title, content, category)'''
+  body text [note:"Content of the post"]
+  user foreign_key 
+  status char [default:`"draft"`]
+  created_at date_time 
+  Note: '''The post model.'''
 }
-ref: Post.category > Category.id
 
-
+ref: Post.user > User.id
