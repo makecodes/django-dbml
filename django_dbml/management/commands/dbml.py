@@ -11,12 +11,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'args', metavar='app_label[.ModelName]', nargs='*',
-            help='Restricts dbml generation to the specified app_label or app_label.ModelName.',
+            "args",
+            metavar="app_label[.ModelName]",
+            nargs="*",
+            help="Restricts dbml generation to the specified app_label or app_label.ModelName.",
         )
         parser.add_argument(
-            "--table_names", action="store_true",
-            help='Use underlying table names rather than model names',
+            "--table_names",
+            action="store_true",
+            help="Use underlying table names rather than model names",
         )
 
     def get_field_notes(self, field):
@@ -38,10 +41,12 @@ class Command(BaseCommand):
 
             if name == "default":
                 if callable(value):
-                    value = "{}.{}()".format(inspect.getmodule(value).__name__, value.__name__)
+                    value = "{}.{}()".format(
+                        inspect.getmodule(value).__name__, value.__name__
+                    )
                 elif isinstance(value, str):
-                    value = "\"{}\"".format(value)
-                attributes.append('default:`{}`'.format(value))
+                    value = '"{}"'.format(value)
+                attributes.append("default:`{}`".format(value))
                 continue
 
             attributes.append("{}:{}".format(name, value))
@@ -64,7 +69,7 @@ class Command(BaseCommand):
         # get specific models when app or app.model is specified
         app_tables = []
         for app in app_labels:
-            app_label_parts = app.split('.')
+            app_label_parts = app.split(".")
             # first part is always the app label
             app_label = app_label_parts[0]
             # use the second part as model label if set
@@ -90,7 +95,9 @@ class Command(BaseCommand):
             if "Field" not in field_type and field_type not in allowed_types:
                 continue
 
-            all_fields[field_type] = to_snake_case(field_type.replace("Field", ""),)
+            all_fields[field_type] = to_snake_case(
+                field_type.replace("Field", ""),
+            )
 
         ignore_types = (
             models.fields.reverse_related.ManyToOneRel,
@@ -99,7 +106,6 @@ class Command(BaseCommand):
 
         tables = {}
         app_tables = self.get_app_tables(app_labels)
-
         for app_table in app_tables:
             table_name = self.get_table_name(app_table)
             tables[table_name] = {"fields": {}, "relations": []}
@@ -186,7 +192,10 @@ class Command(BaseCommand):
                 if "unique" in field_attributes and field.unique is True:
                     tables[table_name]["fields"][field.name]["unique"] = True
 
-                if "default" in field_attributes and field.default != models.fields.NOT_PROVIDED:
+                if (
+                    "default" in field_attributes
+                    and field.default != models.fields.NOT_PROVIDED
+                ):
                     tables[table_name]["fields"][field.name]["default"] = field.default
 
                 if app_table.__doc__:
@@ -200,8 +209,8 @@ class Command(BaseCommand):
                         field_name, field["type"], self.get_field_notes(field)
                     )
                 )
-            if 'note' in table:
-                print("  Note: '''{}'''".format(table['note']))
+            if "note" in table:
+                print("  Note: '''{}'''".format(table["note"]))
             print("}")
 
             for relation in table["relations"]:

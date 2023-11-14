@@ -1,0 +1,17 @@
+Table Category {
+  id auto [pk, unique]
+  name char 
+  Note: '''Category(id, name)'''
+}
+
+
+Table Post {
+  id auto [pk, unique]
+  title char 
+  content text 
+  category foreign_key 
+  Note: '''Post(id, title, content, category)'''
+}
+ref: Post.category > Category.id
+
+
