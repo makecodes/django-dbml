@@ -1,0 +1,5 @@
+-r requirements-test.txt
+
+# Packaging
+check-manifest
+wheel
