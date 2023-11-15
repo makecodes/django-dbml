@@ -28,6 +28,7 @@ jobs:
         WITH_V: true
         PRERELEASE: true
         PRERELEASE_SUFFIX: alpha
+        INITIAL_VERSION: v0.1.0-alpha.0
     - name: Update version in setup.cfg
       run: python update_version.py
     - name: Build and publish
