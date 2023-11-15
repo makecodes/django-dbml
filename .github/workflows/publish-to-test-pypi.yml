@@ -7,6 +7,7 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    name: Release
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
@@ -34,3 +35,21 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
         twine upload dist/*
+    - name: Get tag
+      id: get_tag
+      run: echo "::set-output name=tag::$(git describe --tags)"
+    - name: Comment on Pull Request
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v5
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const tag = '${{ steps.get_tag.outputs.tag }}';
+          const prNumber = context.payload.pull_request.number;
+          const message = `📦 New package published: ${tag}`;
+          github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+            body: message
+          });
