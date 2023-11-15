@@ -4,7 +4,7 @@ import pytest
 
 @pytest.mark.django_db
 def test_default_model(capfd):
-    call_command("dbml", "testapp")
+    call_command("dbml")
     out, err = capfd.readouterr()
     with open("tests/examples/test0.dbml", "r") as f:
         expected = f.read()

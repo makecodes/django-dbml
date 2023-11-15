@@ -114,8 +114,6 @@ class Command(BaseCommand):
                     continue
 
                 field_attributes = list(dir(field))
-
-                # print(table_name, field, type(field))
                 if isinstance(field, models.fields.related.OneToOneField):
                     tables[table_name]["relations"].append(
                         {
