@@ -10,7 +10,7 @@ def get_git_tag():
 def update_version_in_setup_cfg(version):
     config = configparser.ConfigParser()
     config.read("setup.cfg")
-    version = version.replace("-", ".")
+    version = version.lstrip("v").replace("-", ".")
     config["metadata"]["version"] = version
     with open("setup.cfg", "w") as configfile:
         config.write(configfile)

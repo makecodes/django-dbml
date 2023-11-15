@@ -22,13 +22,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
     - name: Bump version and create tag
-      id: tag_version
       uses: anothrNick/github-tag-action@1.64.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DEFAULT_BUMP: prerelease
+        WITH_V: true
         PRERELEASE: true
-
+        PRERELEASE_SUFFIX: alpha
     - name: Update version in setup.cfg
       run: python update_version.py
     - name: Build and publish
