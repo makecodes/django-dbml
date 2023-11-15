@@ -1,21 +1,33 @@
 name: Publish 📦 to PyPI test server 🐍
 
-on: push
-
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    name: Release
     steps:
-    - uses: actions/checkout@v1
-    - name: Set up Python
-      uses: actions/setup-python@v1
+    - name: Check out repository
+      uses: actions/checkout@v3
       with:
-        python-version: '3.x'
+        fetch-depth: '0'
+    - name: Setup python
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.11.0
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
+    - name: Bump version and create tag
+      uses: anothrNick/github-tag-action@1.64.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DEFAULT_BUMP: patch
+    - name: Update version in setup.cfg
+      run: python update_version.py
     - name: Build and publish
       env:
         TWINE_USERNAME: __token__
@@ -24,3 +36,21 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
         twine upload dist/*
+    - name: Get tag
+      id: get_tag
+      run: echo "::set-output name=tag::$(git describe --tags)"
+    - name: Comment on Pull Request
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v5
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const tag = '${{ steps.get_tag.outputs.tag }}';
+          const prNumber = context.payload.pull_request.number;
+          const message = `📦 New package published: ${tag}`;
+          github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+            body: message
+          });
