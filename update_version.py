@@ -8,7 +8,6 @@ def get_git_tag():
 
 
 def update_version_in_setup_cfg(version):
-    version = version.lstrip("v")
     config = configparser.ConfigParser()
     config.read("setup.cfg")
     config["metadata"]["version"] = version
