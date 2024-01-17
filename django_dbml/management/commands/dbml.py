@@ -38,7 +38,7 @@ class Command(BaseCommand):
 
             if name == "default":
                 if callable(value):
-                    if inspect.getmodule(value).__name__:
+                    if inspect.getmodule(value):
                         value = "{}.{}()".format(inspect.getmodule(value).__name__, value.__name__)
                     else:
                         value = "{}()".format(value.__name__)
