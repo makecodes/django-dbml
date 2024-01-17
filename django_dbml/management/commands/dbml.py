@@ -38,7 +38,10 @@ class Command(BaseCommand):
 
             if name == "default":
                 if callable(value):
-                    value = "{}.{}()".format(inspect.getmodule(value).__name__, value.__name__)
+                    if inspect.getmodule(value).__name__:
+                        value = "{}.{}()".format(inspect.getmodule(value).__name__, value.__name__)
+                    else:
+                        value = "{}()".format(value.__name__)
                 elif isinstance(value, str):
                     value = "\"{}\"".format(value)
                 attributes.append('default:`{}`'.format(value))
