@@ -135,7 +135,7 @@ class Command(BaseCommand):
         for app_table in app_tables:
             tl_module_name = self.get_tl_module_name(app_table)
             if self.options["color_by_app"]:
-                table_color = "#{:06x}".format(hash(tl_module_name) & 0xffffff).upper()
+                table_color = f"#{hashlib.sha256(tl_module_name.encode()).hexdigest()[:6]}"
             else:
                 table_color = ""
             table_name = self.get_table_name(app_table)
