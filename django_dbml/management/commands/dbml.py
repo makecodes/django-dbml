@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+import hashlib
 import inspect
 
 from django_dbml.utils import to_snake_case
@@ -23,6 +25,16 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--color_by_app", action="store_true",
+        )
+        parser.add_argument(
+            "--add_project_name", action="store_const",
+            default="My Django Project",
+            help="add name for the project",
+        )
+        parser.add_argument(
+            "--add_project_notes", action="store_const",
+            default="A project with a database",
+            help="add notes to describe the project",
         )
 
     def get_field_notes(self, field):
@@ -96,6 +108,12 @@ class Command(BaseCommand):
         return model.__module__.split(".")[0]
     def handle(self, *app_labels, **kwargs):
         self.options = kwargs
+        project_name = self.options["add_project_name"]
+        project_notes = self.options["add_project_notes"]
+        print(f'Project "{project_name}" {{')
+        print(f"Note:  '''{project_notes}\nLast Updated At {datetime.now(timezone.utc).strftime('%m-%d-%Y %I:%M%p UTC')}'''")
+        print("}\n")
+
         all_fields = {}
         allowed_types = ["ForeignKey", "ManyToManyField"]
         for field_type in models.__all__:
