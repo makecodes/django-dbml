@@ -18,6 +18,12 @@ class Command(BaseCommand):
             "--table_names", action="store_true",
             help='Use underlying table names rather than model names',
         )
+        parser.add_argument(
+            "--group_by_app", action="store_true",
+        )
+        parser.add_argument(
+            "--color_by_app", action="store_true",
+        )
 
     def get_field_notes(self, field):
         if len(field.keys()) == 1:
@@ -85,6 +91,9 @@ class Command(BaseCommand):
 
         return app_tables
 
+    def get_tl_module_name(self, model) -> str:
+        """Get top level module of model."""
+        return model.__module__.split(".")[0]
     def handle(self, *app_labels, **kwargs):
         self.options = kwargs
         all_fields = {}
@@ -103,9 +112,18 @@ class Command(BaseCommand):
         tables = {}
         app_tables = self.get_app_tables(app_labels)
 
+        table_colors_and_groups = {}
+
         for app_table in app_tables:
+            tl_module_name = self.get_tl_module_name(app_table)
+            if self.options["color_by_app"]:
+                table_color = "#{:06x}".format(hash(tl_module_name) & 0xffffff).upper()
+            else:
+                table_color = ""
             table_name = self.get_table_name(app_table)
             tables[table_name] = {"fields": {}, "relations": []}
+
+            table_colors_and_groups[table_name] = {"color": table_color, "group": tl_module_name}
 
             for field in app_table._meta.get_fields():
                 if isinstance(field, ignore_types):
@@ -141,7 +159,9 @@ class Command(BaseCommand):
                     # only define m2m table and relations on first encounter
                     if table_name_m2m not in tables.keys():
                         tables[table_name_m2m] = {"fields": {}, "relations": []}
-
+                        # keep the color of the table for the m2m
+                        table_colors_and_groups[table_name_m2m] = {"color": table_color, "group": tl_module_name}
+                        
                         tables[table_name_m2m]["relations"].append(
                             {
                                 "type": "one_to_many",
@@ -196,7 +216,8 @@ class Command(BaseCommand):
                     tables[table_name]["note"] = app_table.__doc__
 
         for table_name, table in tables.items():
-            print("Table {} {{".format(table_name))
+            table_color = table_colors_and_groups[table_name]["color"]
+            print("Table {} [headercolor: {}] {{".format(table_name, table_color))
             for field_name, field in table["fields"].items():
                 print(
                     "  {} {} {}".format(
@@ -228,3 +249,22 @@ class Command(BaseCommand):
                         )
                     )
             print("\n")
+
+        if self.options["group_by_app"]:
+            groups = {}
+            for table_name, group_color_dict in table_colors_and_groups.items():
+                group = group_color_dict["group"]
+                if group in groups:
+                    groups[group].append(table_name)
+                else:
+                    groups[group] = [table_name]
+
+            for group, tables in groups.items():
+                print(
+                    f"TableGroup {group} {{"
+                    )
+                for table in tables:
+                    print(f"{table}")
+                print("}")
+                print("\n")
+
