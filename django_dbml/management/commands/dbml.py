@@ -214,9 +214,15 @@ class Command(BaseCommand):
                     "type": all_fields.get(type(field).__name__),
                 }
 
+                if "db_comment" in field_attributes and field.db_comment:
+                    tables[table_name]["fields"][field.name]["note"] = field.db_comment
+
                 if "help_text" in field_attributes and field.help_text:
                     help_text = field.help_text.replace('"', '\\"')
-                    tables[table_name]["fields"][field.name]["note"] = help_text
+                    try:
+                        tables[table_name]["fields"][field.name]["note"] += f"\n{help_text}"
+                    except KeyError:
+                        tables[table_name]["fields"][field.name]["note"] = f"{help_text}"
 
                 if "null" in field_attributes and field.null is True:
                     tables[table_name]["fields"][field.name]["null"] = True
@@ -230,8 +236,14 @@ class Command(BaseCommand):
                 if "default" in field_attributes and field.default != models.fields.NOT_PROVIDED:
                     tables[table_name]["fields"][field.name]["default"] = field.default
 
-                if app_table.__doc__:
-                    tables[table_name]["note"] = app_table.__doc__
+            if app_table._meta.db_table_comment:
+                tables[table_name]["note"] = app_table._meta.db_table_comment
+
+            if app_table.__doc__:
+                try:
+                    tables[table_name]["note"] += f"\n{app_table.__doc__}"
+                except KeyError:
+                    tables[table_name]["note"] = f"{app_table.__doc__}"
 
         for table_name, table in tables.items():
             table_color = table_colors_and_groups[table_name]["color"]
