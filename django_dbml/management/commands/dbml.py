@@ -47,7 +47,7 @@ class Command(BaseCommand):
                 continue
 
             if name == "note":
-                attributes.append('note:"{}"'.format(value))
+                attributes.append("note:'''{}'''".format(value))
                 continue
 
             if name in ("null", "pk", "unique"):
@@ -215,7 +215,7 @@ class Command(BaseCommand):
                 }
 
                 if "db_comment" in field_attributes and field.db_comment:
-                    tables[table_name]["fields"][field.name]["note"] = field.db_comment
+                    tables[table_name]["fields"][field.name]["note"] = field.db_comment.replace('"', '\\"')
 
                 if "help_text" in field_attributes and field.help_text:
                     help_text = field.help_text.replace('"', '\\"')
@@ -237,7 +237,7 @@ class Command(BaseCommand):
                     tables[table_name]["fields"][field.name]["default"] = field.default
 
             if app_table._meta.db_table_comment:
-                tables[table_name]["note"] = app_table._meta.db_table_comment
+                tables[table_name]["note"] = app_table._meta.db_table_comment.replace('"', '\\"')
 
             if app_table.__doc__:
                 try:
@@ -246,8 +246,11 @@ class Command(BaseCommand):
                     tables[table_name]["note"] = f"{app_table.__doc__}"
 
         for table_name, table in tables.items():
-            table_color = table_colors_and_groups[table_name]["color"]
-            print("Table {} [headercolor: {}] {{".format(table_name, table_color))
+            if self.options["color_by_app"]:
+                table_color = table_colors_and_groups[table_name]["color"]
+                print("Table {} [headercolor: {}] {{".format(table_name, table_color))
+            else:
+                print("Table {} {{".format(table_name))
             for field_name, field in table["fields"].items():
                 print(
                     "  {} {} {}".format(
