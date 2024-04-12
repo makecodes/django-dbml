@@ -47,7 +47,8 @@ class Command(BaseCommand):
                 continue
 
             if name == "note":
-                attributes.append("note:'''{}'''".format(value))
+                value_formatted = value.replace("'", '"')
+                attributes.append("note: '''\n{}\n'''".format(value_formatted))
                 continue
 
             if name in ("null", "pk", "unique"):
