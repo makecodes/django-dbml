@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+import hashlib
 import inspect
 
 from django_dbml.utils import to_snake_case
@@ -18,6 +20,22 @@ class Command(BaseCommand):
             "--table_names", action="store_true",
             help='Use underlying table names rather than model names',
         )
+        parser.add_argument(
+            "--group_by_app", action="store_true",
+        )
+        parser.add_argument(
+            "--color_by_app", action="store_true",
+        )
+        parser.add_argument(
+            "--add_project_name", action="store_const",
+            default="My Django Project",
+            help="add name for the project",
+        )
+        parser.add_argument(
+            "--add_project_notes", action="store_const",
+            default="A project with a database",
+            help="add notes to describe the project",
+        )
 
     def get_field_notes(self, field):
         if len(field.keys()) == 1:
@@ -29,7 +47,8 @@ class Command(BaseCommand):
                 continue
 
             if name == "note":
-                attributes.append('note:"{}"'.format(value))
+                value_formatted = value.replace("'", '"')
+                attributes.append("note: '''\n{}\n'''".format(value_formatted))
                 continue
 
             if name in ("null", "pk", "unique"):
@@ -85,8 +104,17 @@ class Command(BaseCommand):
 
         return app_tables
 
+    def get_tl_module_name(self, model) -> str:
+        """Get top level module of model."""
+        return model.__module__.split(".")[0]
     def handle(self, *app_labels, **kwargs):
         self.options = kwargs
+        project_name = self.options["add_project_name"]
+        project_notes = self.options["add_project_notes"]
+        print(f'Project "{project_name}" {{')
+        print(f"Note:  '''{project_notes}\nLast Updated At {datetime.now(timezone.utc).strftime('%m-%d-%Y %I:%M%p UTC')}'''")
+        print("}\n")
+
         all_fields = {}
         allowed_types = ["ForeignKey", "ManyToManyField"]
         for field_type in models.__all__:
@@ -103,9 +131,18 @@ class Command(BaseCommand):
         tables = {}
         app_tables = self.get_app_tables(app_labels)
 
+        table_colors_and_groups = {}
+
         for app_table in app_tables:
+            tl_module_name = self.get_tl_module_name(app_table)
+            if self.options["color_by_app"]:
+                table_color = f"#{hashlib.sha256(tl_module_name.encode()).hexdigest()[:6]}"
+            else:
+                table_color = ""
             table_name = self.get_table_name(app_table)
             tables[table_name] = {"fields": {}, "relations": []}
+
+            table_colors_and_groups[table_name] = {"color": table_color, "group": tl_module_name}
 
             for field in app_table._meta.get_fields():
                 if isinstance(field, ignore_types):
@@ -141,7 +178,9 @@ class Command(BaseCommand):
                     # only define m2m table and relations on first encounter
                     if table_name_m2m not in tables.keys():
                         tables[table_name_m2m] = {"fields": {}, "relations": []}
-
+                        # keep the color of the table for the m2m
+                        table_colors_and_groups[table_name_m2m] = {"color": table_color, "group": tl_module_name}
+                        
                         tables[table_name_m2m]["relations"].append(
                             {
                                 "type": "one_to_many",
@@ -176,9 +215,15 @@ class Command(BaseCommand):
                     "type": all_fields.get(type(field).__name__),
                 }
 
+                if "db_comment" in field_attributes and field.db_comment:
+                    tables[table_name]["fields"][field.name]["note"] = field.db_comment.replace('"', '\\"')
+
                 if "help_text" in field_attributes and field.help_text:
                     help_text = field.help_text.replace('"', '\\"')
-                    tables[table_name]["fields"][field.name]["note"] = help_text
+                    try:
+                        tables[table_name]["fields"][field.name]["note"] += f"\n{help_text}"
+                    except KeyError:
+                        tables[table_name]["fields"][field.name]["note"] = f"{help_text}"
 
                 if "null" in field_attributes and field.null is True:
                     tables[table_name]["fields"][field.name]["null"] = True
@@ -192,11 +237,21 @@ class Command(BaseCommand):
                 if "default" in field_attributes and field.default != models.fields.NOT_PROVIDED:
                     tables[table_name]["fields"][field.name]["default"] = field.default
 
-                if app_table.__doc__:
-                    tables[table_name]["note"] = app_table.__doc__
+            if app_table._meta.db_table_comment:
+                tables[table_name]["note"] = app_table._meta.db_table_comment.replace('"', '\\"')
+
+            if app_table.__doc__:
+                try:
+                    tables[table_name]["note"] += f"\n{app_table.__doc__}"
+                except KeyError:
+                    tables[table_name]["note"] = f"{app_table.__doc__}"
 
         for table_name, table in tables.items():
-            print("Table {} {{".format(table_name))
+            if self.options["color_by_app"]:
+                table_color = table_colors_and_groups[table_name]["color"]
+                print("Table {} [headercolor: {}] {{".format(table_name, table_color))
+            else:
+                print("Table {} {{".format(table_name))
             for field_name, field in table["fields"].items():
                 print(
                     "  {} {} {}".format(
@@ -228,3 +283,22 @@ class Command(BaseCommand):
                         )
                     )
             print("\n")
+
+        if self.options["group_by_app"]:
+            groups = {}
+            for table_name, group_color_dict in table_colors_and_groups.items():
+                group = group_color_dict["group"]
+                if group in groups:
+                    groups[group].append(table_name)
+                else:
+                    groups[group] = [table_name]
+
+            for group, tables in groups.items():
+                print(
+                    f"TableGroup {group} {{"
+                    )
+                for table in tables:
+                    print(f"{table}")
+                print("}")
+                print("\n")
+
