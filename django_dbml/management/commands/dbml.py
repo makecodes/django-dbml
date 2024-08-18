@@ -399,7 +399,7 @@ class Command(BaseCommand):
                 output_blocks += ["  {} {} {}".format(field_name, field["type"], self.get_field_attributes(field))]
             if table.get('indexes'):
                 output_blocks += ['\n  indexes {']
-                for index in table['indexes']:
+                for index in sorted(table['indexes'], key=lambda x: str(x['name'])):
                     fields_as_list = '({})'.format(','.join(index['fields']))
                     index_attributes = []
                     if index['pk']:
