@@ -330,7 +330,7 @@ class Command(BaseCommand):
                     enum_name = f'{schema_name}.{tables[table_name]["fields"][field_name]['type']}_{model_name}_{field_name}'.lower()
 
                     tables[table_name]["fields"][field_name]['type'] = enum_name
-                    enums[enum_name] = '\n  '.join([f"\"{c[0]}\" [note: '{c[1]}']" for c in self.get_enum_choices(field)])
+                    enums[enum_name] = '\n  '.join([f"\"{c[0]}\" [note: '''{c[1]}''']" for c in self.get_enum_choices(field)])
 
                 tables[table_name]["fields"][field_name]["note"] = tables[table_name]["fields"][field_name]["note"].strip('\n')
 
