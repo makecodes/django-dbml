@@ -29,6 +29,7 @@ class Command(BaseCommand):
         parser.add_argument("--color_by_app", action="store_true")
         parser.add_argument("--add_project_name", action="store", help="add name for the project")
         parser.add_argument("--add_project_notes", action="store", help="add notes to describe the project")
+        parser.add_argument("--disable_update_timestamp", action="store_true", help="do not include a 'Last updated at' timestamp in the project notes.")
         parser.add_argument("--output_file", action="store", help="Put the generated schema in this file, rather than printing it to stdout.")
         # fmt: on
 
@@ -379,9 +380,12 @@ class Command(BaseCommand):
         # Generate output string from the collected info
         output_blocks = []
 
-        output_blocks += [
-            f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\n  Last Updated At {datetime.now(timezone.utc).strftime('%m-%d-%Y %I:%M%p UTC')}\'\'\'\n}}\n'
-        ]
+        if not self.options.get('disable_update_timestamp'):
+            output_blocks += [
+                f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\n  Last Updated At {datetime.now(timezone.utc).strftime('%m-%d-%Y %I:%M%p UTC')}\'\'\'\n}}\n'
+            ]
+        else:
+            output_blocks += [f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\'\'\'\n}}\n']
 
         for enum_name, enum in sorted(enums.items()):
             output_blocks += ["enum {enum_name} {{\n  {enum}\n}}\n".format(enum_name=enum_name, enum=enum)]
