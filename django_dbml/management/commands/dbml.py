@@ -2,11 +2,12 @@ import hashlib
 import inspect
 import logging
 from datetime import datetime, timezone
+from functools import cache
 from pathlib import Path
+from textwrap import dedent
 
 from django.apps import apps
 from django.conf import settings
-from django.contrib.postgres import fields as pg_fields
 from django.contrib.postgres.indexes import HashIndex
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, models
@@ -48,7 +49,10 @@ class Command(BaseCommand):
             if name == "note":
                 if value:
                     value_formatted = value.replace("'", '"')
-                    attributes.append(f"note: '''{value_formatted}'''")
+                    if '\n' in value_formatted:
+                        attributes.append(f"note: '''\n{value_formatted}'''")
+                    else:
+                        attributes.append(f"note: '''{value_formatted}'''")
                 continue
 
             if name in ("pk", "unique"):
@@ -148,35 +152,25 @@ class Command(BaseCommand):
 
         return "Unknown ({})".format(db['ENGINE'])
 
-    def map_field_to_type(self, field: Field) -> str:
-        """Given a field, return the type we should display it as in dbml.
+    @cache  # noqa: B019
+    def map_field_type_to_dbml_type(self, field: type[Field]) -> str:
+        """Given a field class, return the type we should display it as in dbml."""
+        return to_snake_case(field.__name__.removesuffix("Field"))
 
-        By default this uses a mapping of the default field types known to django.
-        Override this to support including your custom field with a certain type representation in dbml.
-        """
+    def cleanup_docstring(self, input_docstring: str) -> str:
+        """Returns a string with no leading whitespaces in the lines, so it is not weirdly rendered in dbdocs."""
+        lines = input_docstring.split('\n')
+        no_whitespaced_lines = [dedent(l) for l in lines]
+        return '\n'.join(no_whitespaced_lines).strip('\n')
 
-        if not hasattr(self, 'fields_to_type_str_mapping'):
-            self.fields_to_type_str_mapping = {}
-            allowed_types = ["ForeignKey", "ManyToManyField"]
-            for field_type in [
-                *models.__all__,
-                *pg_fields.array.__all__,
-                *pg_fields.citext.__all__,
-                *pg_fields.hstore.__all__,
-                *pg_fields.jsonb.__all__,
-                *pg_fields.ranges.__all__,
-            ]:
-                if "Field" not in field_type and field_type not in allowed_types:
-                    continue
+    def choices_to_markdown_table(self, choices: list) -> str:
+        """Create a string containing a markdown-formatted table of a list of choices."""
+        s = "| Value | Display |\n| -------- | ------- |"
 
-                self.fields_to_type_str_mapping.setdefault(field_type, to_snake_case(field_type.replace("Field", "")))
+        for choice in choices:
+            s += f'\n|{choice[0]}|{choice[1]}|'
 
-        field_type_name = type(field).__name__
-
-        if field_type_name not in self.fields_to_type_str_mapping:
-            self.fields_to_type_str_mapping[field_type_name] = to_snake_case(field_type_name.replace("Field", ""))
-
-        return self.fields_to_type_str_mapping[field_type_name]
+        return s
 
     def handle(self, *app_labels, **kwargs):
         self.options = kwargs
@@ -309,10 +303,10 @@ class Command(BaseCommand):
 
                     continue
 
-                tables[table_name]["fields"][field_name] = {"type": self.map_field_to_type(field), 'note': ''}
+                tables[table_name]["fields"][field_name] = {"type": self.map_field_type_to_dbml_type(type(field)), 'note': ''}
 
                 if "db_comment" in field_attributes and field.db_comment:
-                    tables[table_name]["fields"][field_name]["note"] = field.db_comment.replace('"', '\\"')
+                    tables[table_name]["fields"][field_name]["note"] += field.db_comment.replace('"', '\\"')
 
                 if "help_text" in field_attributes and field.help_text:
                     help_text = field.help_text.replace('"', '\\"')
@@ -353,10 +347,11 @@ class Command(BaseCommand):
                     tables[table_name]["fields"][field_name]['type'] = enum_name
                     enums[enum_name] = '\n  '.join([f"\"{c[0]}\" [note: '''{c[1]}''']" for c in self.get_enum_choices(field)])
 
-                tables[table_name]["fields"][field_name]["note"] = tables[table_name]["fields"][field_name]["note"].strip('\n')
+                if 'base_field' in field_attributes and field.base_field.choices:
+                    tables[table_name]["fields"][field_name]["note"] += f'\n\nBase field choices ({self.map_field_type_to_dbml_type(type(field.base_field))}):'
+                    tables[table_name]["fields"][field_name]["note"] += f'\n{self.choices_to_markdown_table(field.base_field.choices)}'
 
-            if app_table._meta.db_table_comment:
-                tables[table_name]["note"] = '\n' + app_table._meta.db_table_comment.replace('"', '\\"')
+                tables[table_name]["fields"][field_name]["note"] = tables[table_name]["fields"][field_name]["note"].strip('\n')
 
             # Indexes declared on individual fields have been added while looping over the fields above.
             # Here, add indices from class Meta: indexes and unique_together
@@ -392,10 +387,13 @@ class Command(BaseCommand):
                     )
 
             if app_table.__doc__:
-                tables[table_name]["note"] += f"\n    {app_table.__doc__}"
+                tables[table_name]["note"] += f"\n{app_table.__doc__}"
+
+            if app_table._meta.db_table_comment:
+                tables[table_name]["note"] += f'\n\n*DB comment: {app_table._meta.db_table_comment.replace('"', '\\"')}*'
 
             if not self.options["table_names"]:
-                tables[table_name]["note"] += f"\n\n    *DB table: {app_table._meta.db_table}*"
+                tables[table_name]["note"] += f"\n\n*DB table: {app_table._meta.db_table}*"
 
         # Generate output string from the collected info
         output_blocks = []
@@ -417,7 +415,7 @@ class Command(BaseCommand):
                 output_blocks += ["Table {} {{".format(table_name)]
 
             if table.get('note'):
-                output_blocks += ["  Note: '''{}'''\n".format(table['note'].strip('\n'))]
+                output_blocks += ["  Note: '''\n{}'''\n".format(self.cleanup_docstring(table['note']))]
 
             for field_name, field in table["fields"].items():
                 output_blocks += ["  {} {} {}".format(field_name, field["type"], self.get_field_attributes(field))]
