@@ -6,6 +6,7 @@ from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
+from django.contrib.postgres import fields as pg_fields
 from django.contrib.postgres.indexes import HashIndex
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, models
@@ -147,21 +148,40 @@ class Command(BaseCommand):
 
         return "Unknown ({})".format(db['ENGINE'])
 
+    def map_field_to_type(self, field: Field) -> str:
+        """Given a field, return the type we should display it as in dbml.
+
+        By default this uses a mapping of the default field types known to django.
+        Override this to support including your custom field with a certain type representation in dbml.
+        """
+
+        if not hasattr(self, 'fields_to_type_str_mapping'):
+            self.fields_to_type_str_mapping = {}
+            allowed_types = ["ForeignKey", "ManyToManyField"]
+            for field_type in [
+                *models.__all__,
+                *pg_fields.array.__all__,
+                *pg_fields.citext.__all__,
+                *pg_fields.hstore.__all__,
+                *pg_fields.jsonb.__all__,
+                *pg_fields.ranges.__all__,
+            ]:
+                if "Field" not in field_type and field_type not in allowed_types:
+                    continue
+
+                self.fields_to_type_str_mapping.setdefault(field_type, to_snake_case(field_type.replace("Field", "")))
+
+        field_type_name = type(field).__name__
+
+        if field_type_name not in self.fields_to_type_str_mapping:
+            self.fields_to_type_str_mapping[field_type_name] = to_snake_case(field_type_name.replace("Field", ""))
+
+        return self.fields_to_type_str_mapping[field_type_name]
+
     def handle(self, *app_labels, **kwargs):
         self.options = kwargs
         project_name = self.options["add_project_name"]
         project_notes = self.options["add_project_notes"]
-
-        all_fields = {}
-        allowed_types = ["ForeignKey", "ManyToManyField"]
-        for field_type in models.__all__:
-            if "Field" not in field_type and field_type not in allowed_types:
-                continue
-
-            all_fields[field_type] = to_snake_case(field_type.replace("Field", ""))
-
-        # JSONField gets by default snake-cased into 'j_s_o_n' by the operation above, so manually set it here instead to a 'normal' string.
-        all_fields['JSONField'] = 'json'
 
         ignore_types = (models.fields.reverse_related.ManyToOneRel, models.fields.reverse_related.ManyToManyRel)
 
@@ -289,7 +309,7 @@ class Command(BaseCommand):
 
                     continue
 
-                tables[table_name]["fields"][field_name] = {"type": all_fields.get(type(field).__name__), 'note': ''}
+                tables[table_name]["fields"][field_name] = {"type": self.map_field_to_type(field), 'note': ''}
 
                 if "db_comment" in field_attributes and field.db_comment:
                     tables[table_name]["fields"][field_name]["note"] = field.db_comment.replace('"', '\\"')
