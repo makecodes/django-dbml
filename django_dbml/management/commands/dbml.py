@@ -1,7 +1,8 @@
+# ruff: noqa: SLF001
 import hashlib
 import inspect
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
 from textwrap import dedent
@@ -23,7 +24,7 @@ logger = logging.getLogger('dbml')
 class Command(BaseCommand):
     help = "Generate a DBML file based on Django models"
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser):  # noqa: D102
         # fmt: off
         parser.add_argument('args', metavar='app_label[.ModelName]', nargs='*', help='Restricts dbml generation to the specified app_label or app_label.ModelName.')
         parser.add_argument("--table_names", action="store_true", help='Use underlying table names rather than model names')
@@ -35,7 +36,7 @@ class Command(BaseCommand):
         parser.add_argument("--output_file", action="store", help="Put the generated schema in this file, rather than printing it to stdout.")
         # fmt: on
 
-    def get_field_attributes(self, field: dict) -> str:
+    def get_field_attributes(self, field: dict) -> str:  # noqa: PLR0912
         """Returns a string with the supported dbml attributes of a given field."""
 
         if len(field.keys()) == 1:
@@ -43,7 +44,7 @@ class Command(BaseCommand):
 
         attributes = []
         for name, value in field.items():
-            if name in ["type", "null"]:
+            if name in {"type", "null"}:
                 continue
 
             if name == "note":
@@ -55,22 +56,19 @@ class Command(BaseCommand):
                         attributes.append(f"note: '''{value_formatted}'''")
                 continue
 
-            if name in ("pk", "unique"):
+            if name in {"pk", "unique"}:
                 attributes.append(name)
                 continue
 
             if name == "default":
                 if callable(value):
-                    if inspect.getmodule(value):
-                        value = "{}.{}()".format(inspect.getmodule(value).__name__, value.__name__)
-                    else:
-                        value = "{}()".format(value.__name__)
+                    value = f'{inspect.getmodule(value).__name__}.{value.__name__}()' if inspect.getmodule(value) else f'{value.__name__}()'  # noqa: PLW2901
                 elif isinstance(value, str):
-                    value = "\"{}\"".format(value)
-                attributes.append('default:`{}`'.format(value))
+                    value = f'"{value}"'  # noqa: PLW2901
+                attributes.append(f'default:`{value}`')
                 continue
 
-            attributes.append("{}:{}".format(name, value))
+            attributes.append(f"{name}:{value}")
 
         if field.get('null'):
             attributes.append('null')
@@ -85,10 +83,10 @@ class Command(BaseCommand):
         """Return the name to use in dbml for the given model."""
 
         if self.options["table_names"]:
-            return model._meta.db_table  # noqa: SLF001
+            return model._meta.db_table
 
         # Return the "<app_name>.<model_name>" format, to avoid clashes with the same model names being used in different apps.
-        return model._meta.label  # noqa: SLF001
+        return model._meta.label
 
     def get_enum_choices(self, field: Field) -> list:
         """Returns the value and display_value for choices on a field."""
@@ -113,7 +111,7 @@ class Command(BaseCommand):
             try:
                 app_config = apps.get_app_config(app_label)
             except LookupError as e:
-                raise CommandError(str(e))
+                raise CommandError(str(e))  # noqa: B904
 
             app_config = apps.get_app_config(app_label)
             if model_label:
@@ -129,7 +127,7 @@ class Command(BaseCommand):
         parts = model.__module__.split(".")
 
         # Return the name of the app this model belongs to, if possible
-        if len(parts) >= 2:
+        if len(parts) >= 2:  # noqa: PLR2004
             return parts[-2]
 
         return parts[0]
@@ -160,7 +158,7 @@ class Command(BaseCommand):
     def cleanup_docstring(self, input_docstring: str) -> str:
         """Returns a string with no leading whitespaces in the lines, so it is not weirdly rendered in dbdocs."""
         lines = input_docstring.split('\n')
-        no_whitespaced_lines = [dedent(l) for l in lines]
+        no_whitespaced_lines = [dedent(l) for l in lines]  # noqa: E741
         return '\n'.join(no_whitespaced_lines).strip('\n')
 
     def choices_to_markdown_table(self, choices: list) -> str:
@@ -172,7 +170,7 @@ class Command(BaseCommand):
 
         return s
 
-    def handle(self, *app_labels, **kwargs):
+    def handle(self, *app_labels, **kwargs):  # noqa: D102, PLR0912, PLR0914, PLR0915
         self.options = kwargs
         project_name = self.options["add_project_name"]
         project_notes = self.options["add_project_notes"]
@@ -247,7 +245,7 @@ class Command(BaseCommand):
                         table_name_m2m = table_name_m2m.replace('_', '.', 1)
 
                     # only define m2m table and relations on first encounter
-                    if table_name_m2m not in tables.keys():
+                    if table_name_m2m not in tables:
                         tables[table_name_m2m] = {"fields": {}, "relations": [], 'indexes': [], 'note': ''}
                         # keep the color of the table for the m2m
                         table_colors_and_groups[table_name_m2m] = {"color": table_color, "group": tl_module_name}
@@ -359,9 +357,7 @@ class Command(BaseCommand):
             # Here, add indices from class Meta: indexes and unique_together
             if app_table._meta.indexes:
                 for index in app_table._meta.indexes:
-                    column_names_in_index = []
-                    for field in index.fields:
-                        column_names_in_index.append(app_table._meta._forward_fields_map[field].column)  # noqa: PERF401
+                    column_names_in_index = [app_table._meta._forward_fields_map[field].column for field in index.fields]
 
                     tables[table_name]["indexes"].append(
                         {
@@ -374,9 +370,7 @@ class Command(BaseCommand):
                     )
             if app_table._meta.unique_together:
                 for unique_together in app_table._meta.unique_together:
-                    column_names_in_index = []
-                    for field in unique_together:
-                        column_names_in_index.append(app_table._meta._forward_fields_map[field].column)  # noqa: PERF401
+                    column_names_in_index = [app_table._meta._forward_fields_map[field].column for field in unique_together]
 
                     tables[table_name]["indexes"].append(
                         {
@@ -402,19 +396,19 @@ class Command(BaseCommand):
 
         if not self.options.get('disable_update_timestamp'):
             output_blocks += [
-                f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\n  Last Updated At {datetime.now(timezone.utc).strftime('%m-%d-%Y %I:%M%p UTC')}\'\'\'\n}}\n'
+                f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\n  Last Updated At {datetime.now(UTC).strftime('%m-%d-%Y %I:%M%p UTC')}\'\'\'\n}}\n'
             ]
         else:
             output_blocks += [f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\'\'\'\n}}\n']
 
         for enum_name, enum in sorted(enums.items()):
-            output_blocks += ["enum {enum_name} {{\n  {enum}\n}}\n".format(enum_name=enum_name, enum=enum)]
+            output_blocks += [f"enum {enum_name} {{\n  {enum}\n}}\n"]
 
         for table_name, table in sorted(tables.items()):
             if self.options["color_by_app"]:
                 output_blocks += ["Table {} [headercolor: {}] {{".format(table_name, table_colors_and_groups[table_name]["color"])]
             else:
-                output_blocks += ["Table {} {{".format(table_name)]
+                output_blocks += [f"Table {table_name} {{"]
 
             if table.get('note'):
                 output_blocks += ["  Note: '''\n{}'''\n".format(self.cleanup_docstring(table['note']))]
@@ -431,7 +425,7 @@ class Command(BaseCommand):
                     if index['unique']:
                         index_attributes.append('unique')
 
-                    index_attributes.append(f"name: '{index['name']}'")
+                    index_attributes.append(f"name: '{index['name']}'")  # noqa: FURB113
                     index_attributes.append(f"type: {index['type']}")
 
                     index_string = f"{fields_as_list} [{', '.join(index_attributes)}]"
@@ -472,7 +466,7 @@ class Command(BaseCommand):
 
         output_file = self.options.get('output_file')
         if output_file:
-            with Path(output_file).open('w') as f:
+            with Path(output_file).open('w', encoding="utf-8") as f:
                 f.write(output_string)
             logger.info('Generated dbml file to %s', output_file)
         else:
