@@ -414,7 +414,7 @@ class Command(BaseCommand):
                 output_blocks += ["  Note: '''\n{}'''\n".format(self.cleanup_docstring(table['note']))]
 
             for field_name, field in table["fields"].items():
-                output_blocks += ["  {} {} {}".format(field_name, field["type"], self.get_field_attributes(field))]
+                output_blocks += ["  {} {} {}".format(field_name, field["type"], self.get_field_attributes(field)).rstrip()]
             if table.get('indexes'):
                 output_blocks += ['\n  indexes {']
                 for index in sorted(table['indexes'], key=lambda x: str(x['name'])):
