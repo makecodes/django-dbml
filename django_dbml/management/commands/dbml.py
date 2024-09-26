@@ -342,7 +342,7 @@ class Command(BaseCommand):
                     elif '_' in table_name:
                         schema_name, model_name = table_name.split('_')
 
-                    enum_name = f'{schema_name}.{tables[table_name]["fields"][field_name]['type']}_{model_name}_{field_name}'.lower()
+                    enum_name = f'{schema_name}.{tables[table_name]["fields"][field_name]["type"]}_{model_name}_{field_name}'.lower()
 
                     tables[table_name]["fields"][field_name]['type'] = enum_name
                     enums[enum_name] = '\n  '.join([f"\"{c[0]}\" [note: '''{c[1]}''']" for c in self.get_enum_choices(field)])
@@ -386,7 +386,8 @@ class Command(BaseCommand):
                 tables[table_name]["note"] += f"\n{app_table.__doc__}"
 
             if app_table._meta.db_table_comment:
-                tables[table_name]["note"] += f'\n\n*DB comment: {app_table._meta.db_table_comment.replace('"', '\\"')}*'
+                comment = app_table._meta.db_table_comment.replace('"', '\"')
+                tables[table_name]["note"] += f'\n\n*DB comment: {comment}*'
 
             if not self.options["table_names"]:
                 tables[table_name]["note"] += f"\n\n*DB table: {app_table._meta.db_table}*"
@@ -395,8 +396,9 @@ class Command(BaseCommand):
         output_blocks = []
 
         if not self.options.get('disable_update_timestamp'):
+            ts = datetime.now(UTC).strftime('%m-%d-%Y %I:%M%p UTC')
             output_blocks += [
-                f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\n  Last Updated At {datetime.now(UTC).strftime('%m-%d-%Y %I:%M%p UTC')}\'\'\'\n}}\n'
+                f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\n  Last Updated At {ts}\'\'\'\n}}\n'
             ]
         else:
             output_blocks += [f'Project "{project_name}" {{\n  database_type: \'{self.get_db_type()}\'\n  Note: \'\'\'{project_notes}\'\'\'\n}}\n']
