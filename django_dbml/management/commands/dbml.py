@@ -14,9 +14,10 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, models
 from django.db.models import Model
 from django.db.models.fields import Field
+from django.db.utils import DEFAULT_DB_ALIAS
+from django.utils.module_loading import import_string
 
 from django_dbml.utils import to_snake_case
-
 
 logger = logging.getLogger('dbml')
 
@@ -181,6 +182,8 @@ class Command(BaseCommand):
 
         enums, tables, table_colors_and_groups = {}, {}, {}
 
+        routers = [import_string(router)() for router in settings.DATABASE_ROUTERS]
+
         for app_table in self.get_app_tables(app_labels):
             tl_module_name = self.get_tl_module_name(app_table)
 
@@ -308,6 +311,10 @@ class Command(BaseCommand):
                 if "db_comment" in field_attributes and field.db_comment:
                     tables[table_name]["fields"][field_name]["note"] += field.db_comment.replace('"', '\\"')
 
+                if "verbose_name" in field_attributes and field.verbose_name:
+                    verbose_name = field.verbose_name.replace('"', '\\"')
+                    tables[table_name]["fields"][field_name]["note"] += f"\n*{verbose_name}*"
+
                 if "help_text" in field_attributes and field.help_text:
                     help_text = field.help_text.replace('"', '\\"')
                     tables[table_name]["fields"][field_name]["note"] += f"\n{help_text}"
@@ -390,7 +397,23 @@ class Command(BaseCommand):
                 tables[table_name]["note"] += f'\n\n*DB comment: {comment}*'
 
             if not self.options["table_names"]:
-                tables[table_name]["note"] += f"\n\n*DB table: {app_table._meta.db_table}*"
+                db_table = app_table._meta.db_table.replace('"', '').replace("'", '')
+                if '.' not in db_table:
+                    db_table = f'public.{db_table}'
+
+                db_for_read = None
+                for router in routers:
+                    if hasattr(router, 'db_for_read'):
+                        db_for_read = router.db_for_read(app_table) or DEFAULT_DB_ALIAS
+                        if db_for_read:
+                            break
+
+                note = tables[table_name]["note"] + "\n\n*"
+                # Only in case there are multiple databases, add this information.
+                if db_for_read is not None:
+                    note += f"DB: {db_for_read}, "
+                note += f"table: {db_table}*"
+                tables[table_name]["note"] = note
 
         # Generate output string from the collected info
         output_blocks = []
