@@ -8,16 +8,65 @@ on:
 
 jobs:
   test:
+    name: Test (Python ${{ matrix.python-version }}, Django ${{ matrix.django-name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.11"
+            django-name: "4.2"
+            django-constraint: "django>=4.2,<4.3"
+          - python-version: "3.11"
+            django-name: "5.0"
+            django-constraint: "django>=5.0,<5.1"
+          - python-version: "3.11"
+            django-name: "5.1"
+            django-constraint: "django>=5.1,<5.2"
+          - python-version: "3.11"
+            django-name: "5.2"
+            django-constraint: "django>=5.2,<5.3"
+          - python-version: "3.12"
+            django-name: "4.2"
+            django-constraint: "django>=4.2,<4.3"
+          - python-version: "3.12"
+            django-name: "5.0"
+            django-constraint: "django>=5.0,<5.1"
+          - python-version: "3.12"
+            django-name: "5.1"
+            django-constraint: "django>=5.1,<5.2"
+          - python-version: "3.12"
+            django-name: "5.2"
+            django-constraint: "django>=5.2,<5.3"
+          - python-version: "3.13"
+            django-name: "5.1"
+            django-constraint: "django>=5.1,<5.2"
+          - python-version: "3.13"
+            django-name: "5.2"
+            django-constraint: "django>=5.2,<5.3"
+          - python-version: "3.14"
+            django-name: "5.2"
+            django-constraint: "django>=5.2,<5.3"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - uses: astral-sh/setup-uv@v5
+      - name: Run tests
+        run: make test-django PYTHON=${{ matrix.python-version }} DJANGO_CONSTRAINT='${{ matrix.django-constraint }}'
+  quality:
+    name: Quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version-file: ".python-version"
+          python-version: "3.13"
       - uses: astral-sh/setup-uv@v5
       - name: Sync dependencies
-        run: uv sync --locked
-      - name: Run tests
-        run: uv run pytest
+        run: make sync
       - name: Run lint
-        run: uv run ruff check .
+        run: make lint
+      - name: Build package
+        run: make build

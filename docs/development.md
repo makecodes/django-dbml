@@ -20,40 +20,55 @@
 Install dependencies:
 
 ```bash
-uv sync --locked
+make sync
 ```
 
 Run the full test suite:
 
 ```bash
-uv run pytest
+make test
 ```
 
 Run linting:
 
 ```bash
-uv run ruff check .
+make lint
 ```
 
 Build artifacts locally:
 
 ```bash
-uv build
+make build
+```
+
+Run the suite against a specific Django series:
+
+```bash
+make test-django DJANGO_CONSTRAINT="django>=5.0,<5.1" PYTHON=3.12
 ```
 
 If `uv` cannot write to the default cache directory in your environment, use:
 
 ```bash
-UV_CACHE_DIR=.uv-cache uv sync --locked
-UV_CACHE_DIR=.uv-cache uv run pytest
+UV_CACHE_DIR=.uv-cache make sync
+UV_CACHE_DIR=.uv-cache make test
 ```
 
 If you update dependencies, refresh the lockfile before syncing again:
 
 ```bash
-uv lock
-uv sync
+make lock
+make sync
 ```
+
+## CI matrix
+
+The GitHub Actions workflow validates the package against a compatibility matrix of Python and Django versions supported by Django upstream. Today that matrix covers:
+
+- Python 3.11 with Django 4.2, 5.0, 5.1, and 5.2
+- Python 3.12 with Django 4.2, 5.0, 5.1, and 5.2
+- Python 3.13 with Django 5.1 and 5.2
+- Python 3.14 with Django 5.2
 
 ## How to extend the command safely
 

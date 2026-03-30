@@ -8,7 +8,7 @@
 ## Bootstrap
 
 ```bash
-uv sync --locked
+make sync
 ```
 
 If your environment cannot write to the default uv cache location, prefix the commands with `UV_CACHE_DIR=.uv-cache`.
@@ -16,8 +16,8 @@ If your environment cannot write to the default uv cache location, prefix the co
 If you change dependencies in `pyproject.toml`, regenerate the lockfile with:
 
 ```bash
-uv lock
-uv sync
+make lock
+make sync
 ```
 
 ## Daily commands
@@ -25,19 +25,25 @@ uv sync
 Run the unit tests:
 
 ```bash
-uv run pytest
+make test
 ```
 
 Run lint checks:
 
 ```bash
-uv run ruff check .
+make lint
 ```
 
 Build the package:
 
 ```bash
-uv build
+make build
+```
+
+Test against a specific Django branch:
+
+```bash
+make test-django DJANGO_CONSTRAINT="django>=5.1,<5.2" PYTHON=3.13
 ```
 
 ## Project layout
@@ -53,9 +59,9 @@ uv build
 The repository publishes from GitHub Actions using `uv build` and `uv publish`. Before releasing, run:
 
 ```bash
-uv run pytest
-uv run ruff check .
-uv build
+make test
+make lint
+make build
 ```
 
 The detailed development guide lives in `docs/development.md`.

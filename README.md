@@ -34,10 +34,10 @@ be included in the DBML.
 This repository is now managed with `uv`.
 
 ```bash
-uv sync --locked
-uv run pytest
-uv run ruff check .
-uv build
+make sync
+make test
+make lint
+make build
 ```
 
 Development instructions live in [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/development.md](docs/development.md).
