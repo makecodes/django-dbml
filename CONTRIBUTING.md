@@ -48,8 +48,13 @@ make test-django DJANGO_CONSTRAINT="django>=5.1,<5.2" PYTHON=3.13
 
 ## Project layout
 
-- `django_dbml/management/commands/dbml.py`: command that inspects Django model metadata and renders DBML
-- `django_dbml/utils.py`: helper utilities used by the generator
+- `django_dbml/management/commands/dbml.py`: thin Django management command entrypoint
+- `django_dbml/core/options.py`: generation options shared across the core
+- `django_dbml/core/selection.py`: model selection and related-model expansion
+- `django_dbml/core/builder.py`: Django model introspection and schema assembly
+- `django_dbml/core/renderer.py`: DBML rendering
+- `django_dbml/core/schema.py`: intermediate dataclasses for tables, fields, indexes, enums, and relations
+- `django_dbml/utils.py`: small string-formatting helpers
 - `tests/testapp/`: isolated Django app used to exercise the extension
 - `tests/test_command.py`: command-level tests
 - `tests/test_utils.py`: unit tests for helper behavior

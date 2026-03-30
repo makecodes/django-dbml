@@ -6,14 +6,16 @@
 
 ## How the generator is organized
 
-`django_dbml/management/commands/dbml.py` is responsible for:
+The command entrypoint in `django_dbml/management/commands/dbml.py` is intentionally thin. The core is split like this:
 
-1. Selecting which models should be part of the schema.
-2. Expanding the selection to include forward-related models.
-3. Mapping Django field classes to DBML field types.
-4. Rendering tables, enums, indexes, notes, and references.
+1. `django_dbml/core/options.py`: normalized generation options.
+2. `django_dbml/core/selection.py`: model selection and inclusion of forward-related models.
+3. `django_dbml/core/builder.py`: conversion from Django model metadata to an intermediate schema.
+4. `django_dbml/core/schema.py`: dataclasses representing the intermediate schema.
+5. `django_dbml/core/renderer.py`: conversion from the intermediate schema to DBML text.
+6. `django_dbml/core/generator.py`: orchestration layer used by the command.
 
-`django_dbml/utils.py` contains the field-name normalization helper used during type mapping.
+`django_dbml/utils.py` contains small reusable string-formatting helpers.
 
 ## Local development workflow
 
@@ -74,9 +76,11 @@ The GitHub Actions workflow validates the package against a compatibility matrix
 
 When adding support for a new Django field or DBML feature:
 
-1. Update the rendering logic in `django_dbml/management/commands/dbml.py`.
-2. Add or adjust models inside `tests/testapp/models.py` to cover the new metadata shape.
-3. Add assertions in `tests/test_command.py` for the rendered DBML.
-4. If the change is isolated to a helper, add a focused unit test in `tests/test_utils.py`.
+1. If the change affects model discovery, update `django_dbml/core/selection.py`.
+2. If the change affects schema extraction from Django models, update `django_dbml/core/builder.py`.
+3. If the change affects DBML text output, update `django_dbml/core/renderer.py`.
+4. Add or adjust models inside `tests/testapp/models.py` to cover the new metadata shape.
+5. Add assertions in `tests/test_command.py` for the rendered DBML.
+6. If the change is isolated to a helper, add a focused unit test in `tests/test_utils.py`.
 
 Prefer command-level tests for behavior that depends on Django model metadata, because the package's value is in the final DBML output rather than in isolated internal methods.
