@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-dbml"
-version = "1.0.1"
+version = "1.1.0"
 description = "Django extension aimed to generate DBML from installed models."
 readme = "README.md"
 requires-python = ">=3.11"
