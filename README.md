@@ -216,6 +216,19 @@ make test-django DJANGO_CONSTRAINT="django>=5.1,<5.2" PYTHON=3.13
 
 More development details are available in [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/development.md](docs/development.md).
 
+## Contributors
+
+Thanks to the people who helped improve this project through patches and pull requests, including:
+
+- Michel Wilhelm
+- Ee Durbin
+- Mathieu Hinderyckx
+- Rebecca Sutton Koeser
+- Evgeny
+- Nick Budak
+- jcp
+- johnecon
+
 ## Credits
 
 The initial code was based on https://github.com/hamedsj/DbmlForDjango

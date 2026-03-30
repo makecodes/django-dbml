@@ -1,11 +1,38 @@
 name: Publish 📦 to PyPI test server 🐍
 
-on: push
-
+on:
+  workflow_dispatch:
 
 jobs:
-  release:
+  metadata:
+    name: Release Metadata
     runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read package version
+        id: version
+        run: |
+          python3 - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"package_version={version}\n")
+          print(version)
+          PY
+
+  verify:
+    name: Verify TestPyPI Candidate
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build TestPyPI Release (${{ needs.metadata.outputs.package_version }})
+    runs-on: ubuntu-latest
+    needs: [metadata, verify]
     permissions:
       contents: read
     steps:
@@ -14,9 +41,33 @@ jobs:
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@v5
+      - name: Sync dependencies
+        run: make sync
       - name: Build package
-        run: uv build
+        run: make build
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ needs.metadata.outputs.package_version }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish TestPyPI Release (${{ needs.metadata.outputs.package_version }})
+    runs-on: ubuntu-latest
+    needs: [metadata, build]
+    permissions:
+      contents: read
+      id-token: write
+    environment: testpypi
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.metadata.outputs.package_version }}
+          path: dist
       - name: Publish package
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TEST_TOKEN }}
-        run: uv publish --publish-url https://test.pypi.org/legacy/ --check-url https://test.pypi.org/simple/ --trusted-publishing never
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          repository-url: https://test.pypi.org/legacy/

@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_call:
   pull_request:
   push:
 
@@ -53,8 +54,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Run tests
         run: make test-django PYTHON=${{ matrix.python-version }} DJANGO_CONSTRAINT='${{ matrix.django-constraint }}'
-  quality:
-    name: Quality
+
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,5 +68,15 @@ jobs:
         run: make sync
       - name: Run lint
         run: make lint
+
+  package-check:
+    name: Package Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v5
       - name: Build package
         run: make build

@@ -2,11 +2,45 @@ name: Publish 📦 to PyPI
 
 on:
   push:
-    branches: [main]
+    tags:
+      - "v*"
 
 jobs:
-  release:
+  metadata:
+    name: Release Metadata
     runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
+      git_tag: ${{ steps.version.outputs.git_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read package version
+        id: version
+        run: |
+          python3 - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          git_tag = os.environ["GITHUB_REF_NAME"]
+          version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          expected_tag = f"v{version}"
+          if git_tag != expected_tag:
+              raise SystemExit(f"Tag {git_tag!r} does not match project version {expected_tag!r}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"package_version={version}\n")
+              fh.write(f"git_tag={git_tag}\n")
+          print(f"{git_tag} -> {version}")
+          PY
+
+  verify:
+    name: Verify Release Candidate
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build Release (${{ needs.metadata.outputs.package_version }})
+    runs-on: ubuntu-latest
+    needs: [metadata, verify]
     permissions:
       contents: read
     steps:
@@ -15,9 +49,32 @@ jobs:
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@v5
+      - name: Sync dependencies
+        run: make sync
       - name: Build package
-        run: uv build
+        run: make build
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ needs.metadata.outputs.package_version }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release (${{ needs.metadata.outputs.package_version }})
+    runs-on: ubuntu-latest
+    needs: [metadata, build]
+    permissions:
+      contents: read
+      id-token: write
+    environment: pypi
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.metadata.outputs.package_version }}
+          path: dist
       - name: Publish package
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: uv publish --trusted-publishing never
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

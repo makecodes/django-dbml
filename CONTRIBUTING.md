@@ -61,12 +61,39 @@ make test-django DJANGO_CONSTRAINT="django>=5.1,<5.2" PYTHON=3.13
 
 ## Release flow
 
-The repository publishes from GitHub Actions using `uv build` and `uv publish`. Before releasing, run:
+The repository publishes from GitHub Actions using a gated release flow:
+
+- `CI` runs the Django/Python compatibility matrix
+- `CI` runs lint separately
+- `CI` runs a package build check separately
+- publish workflows reuse `CI` before building release artifacts
+- release artifacts are built once, uploaded, and published from those exact artifacts
+- production publishing happens only from tags in the format `vX.Y.Z`
+- the production workflow validates that the Git tag matches `project.version`
+- publishing uses PyPI Trusted Publishing, not long-lived API tokens
+- TestPyPI publishing is manual via `workflow_dispatch`
+- TestPyPI can also use Trusted Publishing when configured on TestPyPI
+
+Before releasing locally, run:
 
 ```bash
 make test
 make lint
 make build
 ```
+
+Recommended production release flow:
+
+```bash
+make test
+make lint
+make build
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+After the tag is pushed, the PyPI workflow publishes that version if CI passes and the tag matches the package version.
+
+If you use GitHub Releases, create the release from the existing version tag instead of using branch pushes as the release trigger.
 
 The detailed development guide lives in `docs/development.md`.
