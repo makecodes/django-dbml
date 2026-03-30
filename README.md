@@ -2,31 +2,45 @@
 
 This app can generate a DBML output for all installed models.
 
-## How to install and use?
+## Installation
 
-#### 1. Install the django-dbml package
-
-```
+```bash
 pip install django-dbml
 ```
 
-#### 2. Put django_dbml on your django settings
+## Usage
+
+Add `django_dbml` to `INSTALLED_APPS`:
 
 ```python
-'...',
-'django_dbml',
-'...',
+INSTALLED_APPS = [
+    # ...
+    "django_dbml",
+]
 ```
 
-#### 3. Run the command to generate a DBML schema based on your Django models
+Generate DBML from all installed models:
 
 ```bash
-$ python manage.py dbml
+python manage.py dbml
 ```
 
-To generate DBML for a subset of your models, specify one or more Django app 
-names or models by app_label or app_label.ModelName. Related tables will still 
+To generate DBML for a subset of your models, specify one or more Django app
+names or models by `app_label` or `app_label.ModelName`. Related tables will still
 be included in the DBML.
+
+## Development
+
+This repository is now managed with `uv`.
+
+```bash
+uv sync --locked
+uv run pytest
+uv run ruff check .
+uv build
+```
+
+Development instructions live in [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/development.md](docs/development.md).
 
 # Thanks
 

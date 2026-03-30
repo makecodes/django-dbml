@@ -99,7 +99,7 @@ class Command(BaseCommand):
 
         # if no apps are specified, process all models
         if not app_labels:
-            return apps.get_models()
+            return list(apps.get_models())
 
         # get specific models when app or app.model is specified
         app_tables = []
@@ -114,13 +114,45 @@ class Command(BaseCommand):
             except LookupError as e:
                 raise CommandError(str(e))  # noqa: B904
 
-            app_config = apps.get_app_config(app_label)
             if model_label:
                 app_tables.append(app_config.get_model(model_label))
             else:
                 app_tables.extend(app_config.get_models())
 
-        return app_tables
+        return self.include_related_models(app_tables)
+
+    def include_related_models(self, models_to_process: list[type[Model]]) -> list[type[Model]]:
+        """Expand a selected set of models to include their forward-related models."""
+
+        ignore_types = (models.fields.reverse_related.ManyToOneRel, models.fields.reverse_related.ManyToManyRel)
+        collected_models: list[type[Model]] = []
+        pending_models = list(models_to_process)
+        seen_models: set[type[Model]] = set()
+
+        while pending_models:
+            model = pending_models.pop(0)
+            if model in seen_models:
+                continue
+
+            seen_models.add(model)
+            collected_models.append(model)
+
+            for field in model._meta.get_fields():
+                if isinstance(field, ignore_types):
+                    continue
+
+                if isinstance(field, (models.fields.related.ForeignKey, models.fields.related.OneToOneField)):
+                    pending_models.append(field.related_model)
+                    continue
+
+                if isinstance(field, models.fields.related.ManyToManyField):
+                    pending_models.append(field.related_model)
+
+                    through_model = field.remote_field.through
+                    if through_model is not None and not through_model._meta.auto_created:
+                        pending_models.append(through_model)
+
+        return collected_models
 
     def get_tl_module_name(self, model: Model) -> str:
         """Get top level module of model."""
@@ -173,8 +205,8 @@ class Command(BaseCommand):
 
     def handle(self, *app_labels, **kwargs):  # noqa: D102, PLR0912, PLR0914, PLR0915
         self.options = kwargs
-        project_name = self.options["add_project_name"]
-        project_notes = self.options["add_project_notes"]
+        project_name = self.options["add_project_name"] or "Django DBML"
+        project_notes = self.options["add_project_notes"] or "Generated from Django models."
 
         ignore_types = (models.fields.reverse_related.ManyToOneRel, models.fields.reverse_related.ManyToManyRel)
 
@@ -392,7 +424,7 @@ class Command(BaseCommand):
             if app_table.__doc__:
                 tables[table_name]["note"] += f"\n{app_table.__doc__}"
 
-            if app_table._meta.db_table_comment:
+            if getattr(app_table._meta, "db_table_comment", ""):
                 comment = app_table._meta.db_table_comment.replace('"', '\"')
                 tables[table_name]["note"] += f'\n\n*DB comment: {comment}*'
 
@@ -495,4 +527,4 @@ class Command(BaseCommand):
                 f.write(output_string)
             logger.info('Generated dbml file to %s', output_file)
         else:
-            print(output_string)  # noqa: T201
+            self.stdout.write(output_string, ending="")
