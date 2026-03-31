@@ -3,7 +3,7 @@ name: Publish 📦 to PyPI
 on:
   push:
     tags:
-      - "v*"
+      - "*.*.*"
 
 permissions:
   contents: read
@@ -27,7 +27,7 @@ jobs:
 
           git_tag = os.environ["GITHUB_REF_NAME"]
           version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
-          expected_tag = f"v{version}"
+          expected_tag = version
           if git_tag != expected_tag:
               raise SystemExit(f"Tag {git_tag!r} does not match project version {expected_tag!r}")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:

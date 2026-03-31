@@ -68,7 +68,7 @@ The repository publishes from GitHub Actions using a gated release flow:
 - `CI` runs a package build check separately
 - publish workflows reuse `CI` before building release artifacts
 - release artifacts are built once, uploaded, and published from those exact artifacts
-- production publishing happens only from tags in the format `vX.Y.Z`
+- production publishing happens only from tags in the format `X.Y.Z`
 - the production workflow validates that the Git tag matches `project.version`
 - publishing uses PyPI Trusted Publishing, not long-lived API tokens
 - TestPyPI publishing is manual via `workflow_dispatch`
@@ -88,8 +88,8 @@ Recommended production release flow:
 make test
 make lint
 make build
-git tag v1.0.1
-git push origin v1.0.1
+git tag 1.1.2
+git push origin 1.1.2
 ```
 
 After the tag is pushed, the PyPI workflow publishes that version if CI passes and the tag matches the package version.

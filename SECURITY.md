@@ -5,7 +5,7 @@
 This project follows a tag-driven release process for production publishing:
 
 - CI runs on pull requests and pushes
-- production publishing runs only from tags matching `vX.Y.Z`
+- production publishing runs only from tags matching `X.Y.Z`
 - the release workflow validates that the Git tag matches `project.version`
 - production and TestPyPI publishing use Trusted Publishing with GitHub OIDC
 - release artifacts are built in CI and published from those exact artifacts
