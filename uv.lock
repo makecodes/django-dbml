@@ -50,7 +50,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "django", specifier = ">=4.2,<6.0" }]
+requires-dist = [{ name = "django", specifier = ">=4.2,<7.0" }]
 
 [package.metadata.requires-dev]
 dev = [
