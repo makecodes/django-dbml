@@ -56,7 +56,7 @@ class DbmlRenderer:
             blocks.append(f"Table {table_name} {{")
 
         if table.note:
-            blocks.append("  Note: '''\n{}'''\n".format(cleanup_docstring(table.note)))
+            blocks.append("  Note: '''\n{}\n'''\n".format(cleanup_docstring(table.note)))
 
         for field_name, field in table.fields.items():
             blocks.append(f"  {field_name} {field.type} {self.render_field_attributes(field)}".rstrip())
@@ -79,7 +79,7 @@ class DbmlRenderer:
         if field.note:
             note = field.note.replace("'", '"')
             if "\n" in note:
-                attributes.append(f"note: '''\n{note}'''")
+                attributes.append(f"note: '''\n{note}\n'''")
             else:
                 attributes.append(f"note: '''{note}'''")
 
