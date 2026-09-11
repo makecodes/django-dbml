@@ -24,8 +24,13 @@ Watch the invariants documented in `CLAUDE.md`:
 
 Then:
 
-1. Add the metadata shape to `tests/testapp/models.py` — that app is the fixture for every generator behavior.
+1. Add the metadata shape to `tests/testapp/models.py`. That app is the fixture for every generator behavior.
 2. Assert on the **rendered DBML** in `tests/test_command.py`. Use `disable_update_timestamp=True` so the output is reproducible. Only add to `tests/test_utils.py` if the change is a pure helper.
 3. Run `make check`.
-4. Run `make test-django DJANGO_CONSTRAINT="django>=4.2,<4.3" PYTHON=3.11` as well when the change touches `_meta` or `schema_editor` internals — that is the oldest supported combination and the one most likely to diverge.
+4. When the change touches `_meta` or `schema_editor` internals, also run both ends of the supported range locally before pushing, because those are the legs most likely to diverge:
+
+   ```bash
+   make test-django DJANGO_CONSTRAINT="django>=4.2,<4.3" PYTHON=3.11
+   make test-django DJANGO_CONSTRAINT="django>=6.1,<6.2" PYTHON=3.14
+   ```
 5. Update `README.md` if the behavior is user-facing, and `docs/development.md` if it moves a pipeline boundary.

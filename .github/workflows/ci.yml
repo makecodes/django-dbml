@@ -1,54 +1,93 @@
 name: CI
 
+# The test matrix below must cover every combination the package claims to
+# support in pyproject.toml: each Python in `project.classifiers` crossed with
+# each Django series allowed by the `django` specifier in
+# `project.dependencies`, minus the pairs upstream Django does not support.
+# Widening either declaration without widening this matrix ships an untested
+# claim of support.
+
 on:
   workflow_call:
+  workflow_dispatch:
   pull_request:
   push:
+    branches:
+      - main
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
     name: Test (Python ${{ matrix.python-version }}, Django ${{ matrix.django-name }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Django 4.2 supports Python 3.8-3.12; the package requires >=3.11.
           - python-version: "3.11"
             django-name: "4.2"
             django-constraint: "django>=4.2,<4.3"
-          - python-version: "3.11"
-            django-name: "5.0"
-            django-constraint: "django>=5.0,<5.1"
-          - python-version: "3.11"
-            django-name: "5.1"
-            django-constraint: "django>=5.1,<5.2"
-          - python-version: "3.11"
-            django-name: "5.2"
-            django-constraint: "django>=5.2,<5.3"
           - python-version: "3.12"
             django-name: "4.2"
             django-constraint: "django>=4.2,<4.3"
-          - python-version: "3.12"
+          # Django 5.0 supports Python 3.10-3.12.
+          - python-version: "3.11"
             django-name: "5.0"
             django-constraint: "django>=5.0,<5.1"
           - python-version: "3.12"
+            django-name: "5.0"
+            django-constraint: "django>=5.0,<5.1"
+          # Django 5.1 supports Python 3.10-3.13.
+          - python-version: "3.11"
             django-name: "5.1"
             django-constraint: "django>=5.1,<5.2"
           - python-version: "3.12"
-            django-name: "5.2"
-            django-constraint: "django>=5.2,<5.3"
+            django-name: "5.1"
+            django-constraint: "django>=5.1,<5.2"
           - python-version: "3.13"
             django-name: "5.1"
             django-constraint: "django>=5.1,<5.2"
+          # Django 5.2 supports Python 3.10-3.14.
+          - python-version: "3.11"
+            django-name: "5.2"
+            django-constraint: "django>=5.2,<5.3"
+          - python-version: "3.12"
+            django-name: "5.2"
+            django-constraint: "django>=5.2,<5.3"
           - python-version: "3.13"
             django-name: "5.2"
             django-constraint: "django>=5.2,<5.3"
           - python-version: "3.14"
             django-name: "5.2"
             django-constraint: "django>=5.2,<5.3"
+          # Django 6.0 supports Python 3.12-3.14.
+          - python-version: "3.12"
+            django-name: "6.0"
+            django-constraint: "django>=6.0,<6.1"
+          - python-version: "3.13"
+            django-name: "6.0"
+            django-constraint: "django>=6.0,<6.1"
+          - python-version: "3.14"
+            django-name: "6.0"
+            django-constraint: "django>=6.0,<6.1"
+          # Django 6.1 supports Python 3.12-3.14.
+          - python-version: "3.12"
+            django-name: "6.1"
+            django-constraint: "django>=6.1,<6.2"
+          - python-version: "3.13"
+            django-name: "6.1"
+            django-constraint: "django>=6.1,<6.2"
+          - python-version: "3.14"
+            django-name: "6.1"
+            django-constraint: "django>=6.1,<6.2"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -57,10 +96,20 @@ jobs:
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Run tests
         run: make test-django PYTHON=${{ matrix.python-version }} DJANGO_CONSTRAINT='${{ matrix.django-constraint }}'
+      - name: Report resolved versions
+        # Diagnostic only: proves which Django actually resolved for this leg.
+        # Never allowed to fail or mask the test result.
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run --locked --isolated --python '${{ matrix.python-version }}' --with '${{ matrix.django-constraint }}' \
+            python -c 'import django, sys; print(f"Django {django.get_version()} on Python {sys.version.split()[0]}")' \
+            >> "$GITHUB_STEP_SUMMARY"
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -75,6 +124,7 @@ jobs:
   package-check:
     name: Package Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -83,3 +133,25 @@ jobs:
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Build package
         run: make build
+
+  required-checks:
+    # Single stable check name for branch protection. The matrix job names
+    # change whenever a Python or Django series is added or dropped, so
+    # requiring them individually silently stops enforcing the dropped ones.
+    name: Required Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs: [test, lint, package-check]
+    steps:
+      - name: Verify every required job succeeded
+        run: |
+          results='${{ join(needs.*.result, " ") }}'
+          echo "Job results: ${results}"
+          for result in ${results}; do
+            if [ "${result}" != "success" ]; then
+              echo "::error::A required job did not succeed (${result})"
+              exit 1
+            fi
+          done
+          echo "All required jobs succeeded."

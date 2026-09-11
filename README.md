@@ -20,7 +20,10 @@ The generated output includes:
 ## Requirements
 
 - Python `>=3.11`
-- Django `>=4.2,<6.0`
+- Django `>=4.2,<7.0`
+
+Every supported Python and Django combination is exercised in CI; see
+[docs/development.md](docs/development.md) for the matrix.
 
 ## Installation
 
