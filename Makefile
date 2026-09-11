@@ -7,7 +7,7 @@ DJANGO_CONSTRAINT ?=
 
 UV_ENV = UV_CACHE_DIR=$(UV_CACHE_DIR)
 
-.PHONY: help sync lock test test-django lint build check ci
+.PHONY: help sync lock test test-django coverage lint build check ci
 
 help:
 	@printf '%s\n' \
@@ -16,6 +16,7 @@ help:
 		'make test        - run the unit test suite with the locked environment' \
 		'make test-django - run tests against a specific Django constraint' \
 		'                   example: make test-django DJANGO_CONSTRAINT="django>=5.1,<5.2" PYTHON=3.13' \
+		'make coverage    - run the suite and report line coverage' \
 		'make lint        - run Ruff checks' \
 		'make build       - build wheel and sdist artifacts' \
 		'make check       - run lint and tests' \
@@ -36,6 +37,9 @@ test-django:
 		exit 2; \
 	fi
 	$(UV_ENV) $(UV) run --locked --isolated $(if $(PYTHON),--python $(PYTHON),) --with "$(DJANGO_CONSTRAINT)" pytest
+
+coverage:
+	$(UV_ENV) $(UV) run --locked pytest --cov=django_dbml --cov-report=term-missing
 
 lint:
 	$(UV_ENV) $(UV) run --locked ruff check .

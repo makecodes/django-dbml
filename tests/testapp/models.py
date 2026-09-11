@@ -33,6 +33,7 @@ class Book(models.Model):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="books")
     tags = models.ManyToManyField(Tag, related_name="books")
+    shelves = models.ManyToManyField("Shelf", through="BookPlacement", related_name="books")
     published_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -41,3 +42,35 @@ class Book(models.Model):
         ]
         unique_together = ("author", "title")
         db_table_comment = "Stores books"
+
+
+class Shelf(models.Model):
+    label = models.CharField(max_length=50)
+
+
+class BookPlacement(models.Model):
+    """Explicit ``through`` model, so no join table is synthesized for it."""
+
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    shelf = models.ForeignKey(Shelf, on_delete=models.CASCADE)
+    position = models.PositiveIntegerField(default=0)
+
+
+class Warehouse(models.Model):
+    """Mirrors the shape reported in issue #38: explicit ``AutoField`` pk and a custom ``db_table``."""
+
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=40)
+
+    class Meta:
+        db_table = "warehouse"
+
+
+class Shipment(models.Model):
+    id = models.AutoField(primary_key=True)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
+    operator = models.OneToOneField(Warehouse, on_delete=models.CASCADE, related_name="operated_shipment")
+    code = models.CharField(max_length=40)
+
+    class Meta:
+        db_table = "shipment_record"
