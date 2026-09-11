@@ -146,7 +146,7 @@ jobs:
     steps:
       - name: Verify every required job succeeded
         run: |
-          results='${{ join(needs.*.result, " ") }}'
+          results="${{ join(needs.*.result, ' ') }}"
           echo "Job results: ${results}"
           for result in ${results}; do
             if [ "${result}" != "success" ]; then
