@@ -59,6 +59,8 @@ class SchemaBuilder:
                         table_to_field=field_name,
                     )
                 )
+                table.fields[field_name] = self.build_field_definition(project, table_name, field)
+                self.add_field_index(table, model, field, field_name)
                 continue
 
             if isinstance(field, models.fields.related.ForeignKey):
@@ -72,6 +74,8 @@ class SchemaBuilder:
                         table_to_field=field_name,
                     )
                 )
+                table.fields[field_name] = self.build_field_definition(project, table_name, field)
+                self.add_field_index(table, model, field, field_name)
                 continue
 
             if isinstance(field, models.fields.related.ManyToManyField):
@@ -220,7 +224,7 @@ class SchemaBuilder:
 
     def add_meta_indexes(self, table: TableDefinition, model: type[Model]) -> None:
         for index in model._meta.indexes:
-            column_names = [model._meta._forward_fields_map[field_name].column for field_name in index.fields]
+            column_names = [model._meta._forward_fields_map[field_name.lstrip("-")].column for field_name in index.fields]
             table.indexes.append(
                 IndexDefinition(
                     fields=column_names,
