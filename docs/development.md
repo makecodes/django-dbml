@@ -65,12 +65,35 @@ make sync
 
 ## CI matrix
 
-The GitHub Actions workflow validates the package against a compatibility matrix of Python and Django versions supported by Django upstream. Today that matrix covers:
+The GitHub Actions workflow validates the package against every combination it
+claims to support: each Python in `project.classifiers` crossed with each Django
+series allowed by the `django` specifier in `project.dependencies`, minus the
+pairs upstream Django does not support. That is 17 legs today:
 
-- Python 3.11 with Django 4.2, 5.0, 5.1, and 5.2
-- Python 3.12 with Django 4.2, 5.0, 5.1, and 5.2
-- Python 3.13 with Django 5.1 and 5.2
-- Python 3.14 with Django 5.2
+| Python | Django series |
+| ------ | ------------- |
+| 3.11   | 4.2, 5.0, 5.1, 5.2 |
+| 3.12   | 4.2, 5.0, 5.1, 5.2, 6.0, 6.1 |
+| 3.13   | 5.1, 5.2, 6.0, 6.1 |
+| 3.14   | 5.2, 6.0, 6.1 |
+
+The gaps are upstream constraints, not omissions: Django 4.2 and 5.0 do not
+support Python 3.13, and Django 6.x requires Python 3.12 or newer.
+
+**Widening `requires-python` or the `django` specifier in `pyproject.toml`
+without widening this matrix ships an untested claim of support.** Add the legs
+in the same pull request, and keep the `Framework :: Django ::` classifiers in
+step.
+
+Each leg prints the Django and Python versions it actually resolved to the job
+summary, so a constraint that silently fails to take effect is visible instead
+of passing as a false green.
+
+CI runs on every pull request and on pushes to `main`. Superseded runs for the
+same pull request are cancelled automatically. `Required Checks` aggregates the
+whole workflow into one stable check name, which is what branch protection
+should require: the matrix job names change whenever a series is added or
+dropped.
 
 ## How to extend the command safely
 

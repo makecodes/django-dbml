@@ -93,7 +93,7 @@ So `table_to` is the *left* side of the emitted `ref`. Read `DbmlRenderer.render
 
 **Field types are derived from the class name, not from a mapping table.** `map_field_type_to_dbml_type` is `to_snake_case(FieldClass.__name__.removesuffix("Field"))`, cached. New Django field types therefore work with no code change. The initialism replacements in `utils.to_snake_case` (`ip_`, `url`, `uuid`, `json`) are the only special cases; add to that list rather than to a mapping.
 
-**Private Django APIs are used on purpose.** `builder.py` opens with a file-level `# ruff: noqa: SLF001` because it calls `connection.schema_editor()._create_index_name()`, `._unique_constraint_name()`, and reads `model._meta._forward_fields_map`. These are the parts most likely to break on a Django upgrade, which is why the CI matrix spans Django 4.2 through 5.2 rather than testing a single version.
+**Private Django APIs are used on purpose.** `builder.py` opens with a file-level `# ruff: noqa: SLF001` because it calls `connection.schema_editor()._create_index_name()`, `._unique_constraint_name()`, and reads `model._meta._forward_fields_map`. These are the parts most likely to break on a Django upgrade, which is why CI runs a full compatibility matrix rather than testing a single version.
 
 ## Tests
 
@@ -102,6 +102,29 @@ So `table_to` is the *left* side of the emitted `ref`. Read `DbmlRenderer.render
 Prefer command-level assertions in `tests/test_command.py` over testing internals: the value of this package is the rendered DBML, so assert on substrings of the output. Reserve `tests/test_utils.py` for pure helpers. To cover a new metadata shape, add a field or model to `tests/testapp/models.py` first, then assert on what it renders.
 
 Pass `disable_update_timestamp=True` in tests; otherwise the project note embeds `datetime.now(UTC)` and the output is not reproducible.
+
+## CI matrix
+
+`ci.yml` runs on every pull request and on pushes to `main`, and is reused by both publish
+workflows through `workflow_call`. It must cover **every combination the package claims to
+support**: each Python in `project.classifiers` crossed with each Django series allowed by the
+`django` specifier in `project.dependencies`, minus the pairs upstream Django does not support.
+That is 17 legs today, spanning Django 4.2 to 6.1 on Python 3.11 to 3.14. `docs/development.md`
+holds the table.
+
+Widening `requires-python`, the `django` specifier, or the classifiers **without adding the
+matching legs ships an untested claim of support**. That is how Django 6.x went unverified for
+several releases after the specifier was widened to `<7.0`. Change all of them in one pull
+request.
+
+Each leg prints the Django and Python versions it actually resolved into the job summary. That
+guard matters because `make test-django` layers `uv run --with <constraint>` over the locked
+environment: a constraint that silently fails to take effect would otherwise pass as a false
+green against whatever `uv.lock` pins.
+
+`Required Checks` aggregates the workflow into one stable check name. Branch protection should
+require that job, not the individual matrix legs, whose names change whenever a series is added
+or dropped.
 
 ## Lint
 
