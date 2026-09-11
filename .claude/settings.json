@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make sync)",
+      "Bash(make lock)",
+      "Bash(make test)",
+      "Bash(make test-django:*)",
+      "Bash(make lint)",
+      "Bash(make build)",
+      "Bash(make check)",
+      "Bash(make ci)",
+      "Bash(make help)",
+      "Bash(uv run --locked pytest:*)",
+      "Bash(uv run --locked ruff check:*)",
+      "Bash(uv tree:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push origin --tags:*)",
+      "Bash(uv publish:*)",
+      "Bash(twine upload:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}

@@ -58,6 +58,13 @@ make test-django DJANGO_CONSTRAINT="django>=5.1,<5.2" PYTHON=3.13
 - `tests/testapp/`: isolated Django app used to exercise the extension
 - `tests/test_command.py`: command-level tests
 - `tests/test_utils.py`: unit tests for helper behavior
+- `CLAUDE.md`: architecture notes and repository conventions, read automatically by Claude Code
+- `.claude/`: shared Claude Code configuration (command permissions and project slash commands)
+
+`CLAUDE.md` and `.claude/` are committed so that AI-assisted contributions follow the same
+pipeline boundaries, testing style, and release process as everything else. They are optional
+tooling: nothing in the build, test, or release flow depends on them. Per-developer overrides
+belong in `.claude/settings.local.json`, which is gitignored.
 
 ## Release flow
 
