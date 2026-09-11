@@ -154,11 +154,18 @@ Ruff runs with its default rule set only (`E4`, `E7`, `E9`, `F`) at `line-length
 
 Releases are tag-driven and publish to PyPI via **Trusted Publishing** (GitHub OIDC). There are no API tokens.
 
-1. Bump `project.version` in `pyproject.toml` and merge that to `main`.
+1. Bump `project.version` in `pyproject.toml`, then run `make lock`. The package is a member of
+   its own workspace, so `uv.lock` records `project.version`, and bumping without relocking makes
+   every `uv sync --locked` fail, including the release workflow's own sync step. Merge both files
+   to `main` together.
 2. Run `make ci` locally.
 3. Tag with the bare version, **no `v` prefix**: `git tag 1.2.0 && git push origin 1.2.0`.
 
 `.github/workflows/production.yml` then: reads `project.version` and **fails the release if the tag does not match it exactly**; reuses `ci.yml` via `workflow_call` as a gate; builds sdist+wheel once; uploads them as an artifact; and publishes *those exact artifacts* from a separate job bound to the `pypi` GitHub environment.
+
+That environment carries a required reviewer, so the run parks at `waiting` once the artifacts are
+built and publishes nothing until someone approves the deployment. A green matrix is not a
+published release: check the run's own status, not just its checks.
 
 `.github/workflows/publish-to-test-pypi.yml` is the same shape but `workflow_dispatch`-only and bound to a `testpypi` environment.
 

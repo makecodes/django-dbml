@@ -81,6 +81,7 @@ The repository publishes from GitHub Actions using a gated release flow:
 - production publishing happens only from tags in the format `X.Y.Z`
 - the production workflow validates that the Git tag matches `project.version`
 - publishing uses PyPI Trusted Publishing, not long-lived API tokens
+- the `pypi` environment requires a manual approval before the publish job runs
 - TestPyPI publishing is manual via `workflow_dispatch`
 - TestPyPI can also use Trusted Publishing when configured on TestPyPI
 
@@ -95,6 +96,8 @@ make build
 Recommended production release flow:
 
 ```bash
+# after bumping project.version in pyproject.toml
+make lock
 make test
 make lint
 make build
@@ -105,7 +108,14 @@ git push origin X.Y.Z
 Replace `X.Y.Z` with the value of `project.version` in `pyproject.toml`. The tag must match it
 exactly, with no `v` prefix, or the release workflow fails before publishing anything.
 
-After the tag is pushed, the PyPI workflow publishes that version if CI passes and the tag matches the package version.
+`make lock` is part of the bump, not an afterthought. The package is a member of its own
+workspace, so `uv.lock` records `project.version`, and a lockfile that disagrees with
+`pyproject.toml` fails every `uv sync --locked`, starting with the release workflow's own sync
+step.
+
+After the tag is pushed, the PyPI workflow publishes that version if CI passes, the tag matches
+the package version, and someone approves the `pypi` environment deployment. Until that approval
+the run sits at `waiting`, with every check green and nothing published.
 
 If you use GitHub Releases, create the release from the existing version tag instead of using branch pushes as the release trigger.
 
