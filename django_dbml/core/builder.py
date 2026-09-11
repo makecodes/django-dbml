@@ -126,9 +126,12 @@ class SchemaBuilder:
                 ),
             ]
         )
-        table.fields["id"] = FieldDefinition(type="auto", pk=True)
-        table.fields[field.m2m_reverse_name()] = FieldDefinition(type="auto")
-        table.fields[field.m2m_column_name()] = FieldDefinition(type="auto")
+        source_target = field.model._meta.get_field(field.m2m_target_field_name())
+        related_target = field.related_model._meta.get_field(field.m2m_reverse_target_field_name())
+
+        table.fields["id"] = FieldDefinition(type=map_field_type_to_dbml_type(type(through_model._meta.pk)), pk=True)
+        table.fields[field.m2m_reverse_name()] = FieldDefinition(type=map_field_type_to_dbml_type(type(related_target)))
+        table.fields[field.m2m_column_name()] = FieldDefinition(type=map_field_type_to_dbml_type(type(source_target)))
 
         for field_name in [field.m2m_reverse_name(), field.m2m_column_name()]:
             table.indexes.append(
@@ -162,8 +165,21 @@ class SchemaBuilder:
 
         project.tables[table_name] = table
 
+    def get_field_type(self, field: Field) -> str:
+        """Return the DBML type describing what the column stores.
+
+        A relation column holds a copy of the field it points at, so it takes
+        that field's type. The relation itself is already carried by the `ref`,
+        which is why `foreign_key` and `one_to_one` say nothing useful here.
+        """
+
+        if isinstance(field, (models.fields.related.ForeignKey, models.fields.related.OneToOneField)):
+            return map_field_type_to_dbml_type(type(field.target_field))
+
+        return map_field_type_to_dbml_type(type(field))
+
     def build_field_definition(self, project: ProjectDefinition, table_name: str, field: Field) -> FieldDefinition:
-        field_definition = FieldDefinition(type=map_field_type_to_dbml_type(type(field)))
+        field_definition = FieldDefinition(type=self.get_field_type(field))
 
         if getattr(field, "db_comment", ""):
             field_definition.note += field.db_comment.replace('"', '\\"')

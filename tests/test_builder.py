@@ -6,7 +6,7 @@ from django.conf import settings
 from django_dbml.core.builder import SchemaBuilder, map_field_type_to_dbml_type
 from django_dbml.core.options import GenerationOptions
 from django_dbml.core.selection import get_model_group
-from tests.testapp.models import Book
+from tests.testapp.models import Book, Shipment
 
 
 @pytest.fixture
@@ -95,7 +95,20 @@ def test_field_types_are_derived_from_the_class_name() -> None:
     assert map_field_type_to_dbml_type(DateTimeField) == "date_time"
     assert map_field_type_to_dbml_type(BigAutoField) == "big_auto"
     assert map_field_type_to_dbml_type(JSONField) == "json"
+    # The raw mapper still names the relation class; the builder is what declines
+    # to use it for a relation column. See get_field_type.
     assert map_field_type_to_dbml_type(ForeignKey) == "foreign_key"
+
+
+def test_get_field_type_resolves_relations_to_their_target(builder: SchemaBuilder) -> None:
+    assert builder.get_field_type(Book._meta.get_field("author")) == "big_auto"
+    assert builder.get_field_type(Shipment._meta.get_field("warehouse")) == "auto"
+    assert builder.get_field_type(Shipment._meta.get_field("operator")) == "auto"
+
+
+def test_get_field_type_leaves_plain_columns_alone(builder: SchemaBuilder) -> None:
+    assert builder.get_field_type(Book._meta.get_field("title")) == "char"
+    assert builder.get_field_type(Book._meta.get_field("published_at")) == "date_time"
 
 
 def test_model_group_falls_back_to_the_module_when_there_is_no_package() -> None:

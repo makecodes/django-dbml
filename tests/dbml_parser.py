@@ -26,7 +26,13 @@ def _skips_note(line: str) -> bool:
 def parse_tables(dbml: str) -> dict[str, list[str]]:
     """Return the column names each rendered table declares, in emitted order."""
 
-    tables: dict[str, list[str]] = {}
+    return {table: list(columns) for table, columns in parse_columns(dbml).items()}
+
+
+def parse_columns(dbml: str) -> dict[str, dict[str, str]]:
+    """Return each rendered table's columns mapped to their declared DBML type."""
+
+    tables: dict[str, dict[str, str]] = {}
     current: str | None = None
     inside_note = False
     inside_indexes = False
@@ -43,7 +49,7 @@ def parse_tables(dbml: str) -> dict[str, list[str]]:
             header = TABLE_HEADER.match(line)
             if header:
                 current = header.group("name")
-                tables[current] = []
+                tables[current] = {}
             continue
 
         if inside_indexes:
@@ -63,7 +69,8 @@ def parse_tables(dbml: str) -> dict[str, list[str]]:
             inside_note = _skips_note(line)
             continue
 
-        tables[current].append(line.split(maxsplit=1)[0])
+        name, _, remainder = line.partition(" ")
+        tables[current][name] = remainder.split(maxsplit=1)[0] if remainder else ""
         inside_note = _skips_note(line)
 
     return tables
