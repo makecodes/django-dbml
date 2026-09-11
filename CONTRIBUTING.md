@@ -98,9 +98,12 @@ Recommended production release flow:
 make test
 make lint
 make build
-git tag 1.1.2
-git push origin 1.1.2
+git tag X.Y.Z
+git push origin X.Y.Z
 ```
+
+Replace `X.Y.Z` with the value of `project.version` in `pyproject.toml`. The tag must match it
+exactly, with no `v` prefix, or the release workflow fails before publishing anything.
 
 After the tag is pushed, the PyPI workflow publishes that version if CI passes and the tag matches the package version.
 
