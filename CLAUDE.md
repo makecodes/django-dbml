@@ -93,6 +93,8 @@ So `table_to` is the *left* side of the emitted `ref`. Read `DbmlRenderer.render
 
 **Field types are derived from the class name, not from a mapping table.** `map_field_type_to_dbml_type` is `to_snake_case(FieldClass.__name__.removesuffix("Field"))`, cached. New Django field types therefore work with no code change. The initialism replacements in `utils.to_snake_case` (`ip_`, `url`, `uuid`, `json`) are the only special cases; add to that list rather than to a mapping.
 
+**Relation columns are typed by their target, not by the relation.** `SchemaBuilder.get_field_type` resolves a `ForeignKey` or `OneToOneField` to `field.target_field`, and the synthesized many-to-many join table resolves both of its columns the same way. A relation column stores a copy of what it points at, and DBML already carries the relation in the `ref`, so `foreign_key` and `one_to_one` as column types said nothing about what the column holds. `test_relation_columns_carry_the_type_of_the_column_they_reference` holds both ends of every relation to the same type.
+
 **Private Django APIs are used on purpose.** `builder.py` opens with a file-level `# ruff: noqa: SLF001` because it calls `connection.schema_editor()._create_index_name()`, `._unique_constraint_name()`, and reads `model._meta._forward_fields_map`. These are the parts most likely to break on a Django upgrade, which is why CI runs a full compatibility matrix rather than testing a single version.
 
 ## Tests

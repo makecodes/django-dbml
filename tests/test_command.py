@@ -6,6 +6,7 @@ from django.core.management.base import CommandError
 from django.test import override_settings
 
 from tests.dbml_parser import (
+    parse_columns,
     parse_relations,
     parse_table_attributes,
     parse_table_groups,
@@ -227,3 +228,53 @@ def test_table_notes_name_the_database_a_router_reads_from() -> None:
     output = render_dbml("testapp.Warehouse", disable_update_timestamp=True)
 
     assert "*DB: replica, table: public.warehouse*" in output
+
+
+def test_relation_columns_carry_the_type_of_the_column_they_reference() -> None:
+    """A relation column stores a copy of its target, so the two types must agree.
+
+    `foreign_key` and `one_to_one` describe the relation, which DBML already
+    carries in the `ref`. Emitting them as the column type told a reader nothing
+    about what the column actually holds.
+    """
+
+    output = render_dbml(disable_update_timestamp=True)
+    columns = parse_columns(output)
+    relations = parse_relations(output)
+
+    assert relations, "expected the fixture app to produce relations"
+
+    for left, _, right in relations:
+        left_table, left_column = split_endpoint(left)
+        right_table, right_column = split_endpoint(right)
+
+        assert columns[left_table][left_column] == columns[right_table][right_column], (
+            f"{left} and {right} are the two ends of one relation but declare different types"
+        )
+
+
+def test_relation_columns_never_use_the_relation_kind_as_a_type() -> None:
+    output = render_dbml(disable_update_timestamp=True)
+
+    for table, columns in parse_columns(output).items():
+        for column, column_type in columns.items():
+            assert column_type not in {"foreign_key", "one_to_one"}, f"{table}.{column} is typed by its relation kind"
+
+
+def test_relation_column_type_follows_the_target_primary_key() -> None:
+    output = render_dbml("testapp", disable_update_timestamp=True)
+    columns = parse_columns(output)
+
+    # Warehouse declares an explicit AutoField; the rest of the app uses BigAutoField.
+    assert columns["testapp.Warehouse"]["id"] == "auto"
+    assert columns["testapp.Shipment"]["warehouse_id"] == "auto"
+    assert columns["testapp.Author"]["id"] == "big_auto"
+    assert columns["testapp.Book"]["author_id"] == "big_auto"
+
+
+def test_synthesized_join_table_columns_follow_both_targets() -> None:
+    output = render_dbml("testapp", disable_update_timestamp=True)
+    columns = parse_columns(output)
+
+    assert columns["testapp.book_tags"]["book_id"] == columns["testapp.Book"]["id"]
+    assert columns["testapp.book_tags"]["tag_id"] == columns["testapp.Tag"]["id"]
