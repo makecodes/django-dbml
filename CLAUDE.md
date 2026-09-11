@@ -99,9 +99,27 @@ So `table_to` is the *left* side of the emitted `ref`. Read `DbmlRenderer.render
 
 `tests/settings.py` configures an in-memory SQLite database and sets `MIGRATION_MODULES = {"testapp": None}`, so no migrations exist or are needed. `tests/testapp/models.py` is the fixture: it deliberately carries one instance of every metadata shape the generator reads (docstring, `db_comment`, `db_table_comment`, `help_text`, `choices`, `unique`, `db_index`, `Meta.indexes`, `unique_together`, FK, O2O, M2M).
 
-Prefer command-level assertions in `tests/test_command.py` over testing internals: the value of this package is the rendered DBML, so assert on substrings of the output. Reserve `tests/test_utils.py` for pure helpers. To cover a new metadata shape, add a field or model to `tests/testapp/models.py` first, then assert on what it renders.
+Prefer command-level assertions in `tests/test_command.py` over testing internals: the value of
+this package is the rendered DBML. To cover a new metadata shape, add a field or model to
+`tests/testapp/models.py` first, then assert on what it renders. `tests/test_builder.py` and
+`tests/test_renderer.py` exist only for paths that are awkward to reach through the command, such
+as the database-engine mapping and default formatting.
 
-Pass `disable_update_timestamp=True` in tests; otherwise the project note embeds `datetime.now(UTC)` and the output is not reproducible.
+`tests/dbml_parser.py` reads generated DBML back into tables, columns, relations and groups, so
+assertions can be structural instead of substring matching. It is an assertion aid, not a DBML
+implementation: extend it only as far as the renderer's own output requires.
+
+`test_every_relation_endpoint_references_a_declared_column` is the important one. It encodes the
+dbdiagram rule that broke in issue #38 rather than any single column name, so it catches the whole
+class of failure. Keep it passing for any new relation kind.
+
+Pass `disable_update_timestamp=True` in tests; otherwise the project note embeds `datetime.now(UTC)`
+and the output is not reproducible.
+
+`make coverage` reports line coverage. Two paths are knowingly uncovered: the defensive dedup return
+in `_build_many_to_many_table`, which needs the same join table to be reached twice, and the
+`base_field.choices` branch, which needs `django.contrib.postgres` and therefore a PostgreSQL
+install. Do not chase them for the percentage.
 
 ## CI matrix
 

@@ -56,7 +56,10 @@ make test-django DJANGO_CONSTRAINT="django>=5.1,<5.2" PYTHON=3.13
 - `django_dbml/core/schema.py`: intermediate dataclasses for tables, fields, indexes, enums, and relations
 - `django_dbml/utils.py`: small string-formatting helpers
 - `tests/testapp/`: isolated Django app used to exercise the extension
-- `tests/test_command.py`: command-level tests
+- `tests/dbml_parser.py`: reads generated DBML back so tests can assert on its structure
+- `tests/test_command.py`: command-level tests, including every documented CLI option
+- `tests/test_builder.py`: unit tests for model introspection that is awkward to reach through the command
+- `tests/test_renderer.py`: unit tests for DBML formatting details
 - `tests/test_utils.py`: unit tests for helper behavior
 - `CLAUDE.md`: architecture notes and repository conventions, read automatically by Claude Code
 - `.claude/`: shared Claude Code configuration (command permissions and project slash commands)

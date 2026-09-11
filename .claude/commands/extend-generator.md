@@ -25,7 +25,8 @@ Watch the invariants documented in `CLAUDE.md`:
 Then:
 
 1. Add the metadata shape to `tests/testapp/models.py`. That app is the fixture for every generator behavior.
-2. Assert on the **rendered DBML** in `tests/test_command.py`. Use `disable_update_timestamp=True` so the output is reproducible. Only add to `tests/test_utils.py` if the change is a pure helper.
+2. Assert on the **rendered DBML** in `tests/test_command.py`, using `tests/dbml_parser.py` for structural checks rather than substring matching. Use `disable_update_timestamp=True` so the output is reproducible. Only drop to `tests/test_builder.py`, `tests/test_renderer.py` or `tests/test_utils.py` for paths the command cannot reach.
+   If you added a relation kind, `test_every_relation_endpoint_references_a_declared_column` must still pass: it encodes the dbdiagram rule that broke in issue #38.
 3. Run `make check`.
 4. When the change touches `_meta` or `schema_editor` internals, also run both ends of the supported range locally before pushing, because those are the legs most likely to diverge:
 
